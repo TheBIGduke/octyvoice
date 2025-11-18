@@ -87,11 +87,8 @@ class OctyVoiceEngine:
                 if text_transcribed:
                     print(f" Transcribed Text: {text_transcribed}")
 
-                    # Generate response - ensure self.llm exists or replace with your logic
-                    if hasattr(self, "llm"):
-                        response = self.llm.ask(text_transcribed)
-                    else:
-                        response = "No LLM configured."
+                    # Echo logic
+                    response = f"You said: {text_transcribed}"
 
                     # Synthesize and play response
                     wav_data = self.tts.synthesize(response)
