@@ -1,15 +1,12 @@
 import logging
 import threading
+import sys
 
 from utils.utils import LoadModel
 from stt.audio_listener import AudioListener
 from stt.speech_to_text import SpeechToText
 from tts.text_to_speech import TTS
 from config.settings import AUDIO_LISTENER_FRAMES_PER_BUFFER
-
-# TODO: import WakeWord and your LLM client here
-# from wake_word.wake_word import WakeWord
-# from llm.client import LLMClient
 
 
 class OctyVoiceEngine:
@@ -48,18 +45,22 @@ class OctyVoiceEngine:
                             frames.append(data)
                     except Exception as e:
                         self.log.error(f"Recording error: {e}")
-                        break
+            except Exception as e:
+                self.log.error(f"Failed to start recording: {e}")
             finally:
                 try:
                     self.audio_listener.stop_stream()
-                except Exception:
-                    pass
+                except Exception as e:
+                    self.log.error(f"Failed to stop audio stream: {e}")
 
+        # Start recording thread
         t = threading.Thread(target=_record_loop, daemon=True)
         t.start()
 
         try:
             input(" Recording... Press Enter to stop.\n")
+        except (KeyboardInterrupt, EOFError):
+            pass
         finally:
             stop_event.set()
             t.join()
@@ -82,34 +83,31 @@ class OctyVoiceEngine:
                 print(" Processing...")
 
                 # Transcribe
-                text_transcribed = self.stt.transcribe_audio_bytes(audio_data)
+                text = self.stt.stt_from_bytes(audio_data)
 
-                if text_transcribed:
-                    print(f" Transcribed Text: {text_transcribed}")
+                if text:
+                    print(f" Transcribed Text: {text}")
 
                     # Echo logic
-                    response = f"You said: {text_transcribed}"
+                    response_text = f"You said: {text}"
 
                     # Synthesize and play response
-                    wav_data = self.tts.synthesize(response)
-                    self.tts.play_audio_with_amplitude(wav_data)
+                    audio_out = self.tts.synthesize(response_text)
+                    self.tts.play_audio_with_amplitude(audio_out)
                 else:
-                    print(" No transcribed text.")
+                    print(" Could not understand the audio")
+
         except KeyboardInterrupt:
             print("\n--- Stopping OctyVoice ---\n")
             self.stop()
+            sys.exit(0)
 
     def stop(self):
         try:
             self.audio_listener.delete()
-        except Exception:
-            pass
-        try:
             self.tts.stop_tts()
         except Exception:
             pass
-        self.log.info("OctyVoice Stopped")
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")

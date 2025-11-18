@@ -12,7 +12,7 @@ def define_device_id(pa:pyaudio.PyAudio = None, prefered:int = AUDIO_LISTENER_DE
             log.info(f"Error al usar device_index preferido {prefered}: {e}")
     
     elif pa is None:
-        log.warning(f"Pyaudio instance no iniciado, no se puede listar dispositivos.")
+        log.warning(f"Pyaudio instance not started, cannot list devices.")
         return None
 
     elif pa is not None:
@@ -21,7 +21,7 @@ def define_device_id(pa:pyaudio.PyAudio = None, prefered:int = AUDIO_LISTENER_DE
             if info.get('maxInputChannels', 0) > 0:
                 log.info(f"[{i}] {info['name']} (in={info['maxInputChannels']}, rate={int(info.get('defaultSampleRate',0))})")
                 if info['name'].lower() == "pulse":
-                    log.warning(f"[AudioListener - utils]Usando dispositivo PulseAudio por defecto: {i}")
+                    log.warning(f"[AudioListener - utils]Using PulseAudio device by default: {i}")
                     return i
     
 class AudioListener:
@@ -50,7 +50,7 @@ class AudioListener:
     def read_frame(self, frame_samples: int) -> bytes:
         """ Read a frame of audio data from the stream."""
         if self.stream is None:
-            raise RuntimeError("El Audio stream no se ha comenzado o está fallando la lectura.")
+            raise RuntimeError("The audio stream has not been started or is failing to read.")
         return self.stream.read(frame_samples, exception_on_overflow=False)
 
     def stop_stream(self):
@@ -60,7 +60,7 @@ class AudioListener:
             self.stream.close()
             self.stream = None
 
-    def deleate(self):                                                    #MAL ESCRITO
+    def delete(self):
         """ Clean up the audio interface and stream."""
         if self.stream is not None:
             self.stop_stream()
@@ -74,5 +74,5 @@ if "__main__" == __name__:
     import time
     time.sleep(time_test)
     data = al.read_frame(3200)
-    print(f"Durante {time_test} segundos, leíste {len(data)} bytes. Tu AudioListener funciona correctamente ✅")
+    print(f"During {time_test} seconds, you read {len(data)} bytes. Your AudioListener is working correctly")
     al.stop_stream()
