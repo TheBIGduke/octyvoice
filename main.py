@@ -1,74 +1,120 @@
 import logging
+import threading
+
 from utils.utils import LoadModel
-from stt.wake_word import WakeWord
 from stt.audio_listener import AudioListener
 from stt.speech_to_text import SpeechToText
-from llm.llm import LlmAgent
 from tts.text_to_speech import TTS
-    
+from config.settings import AUDIO_LISTENER_FRAMES_PER_BUFFER
 
-class OctybotAgent:
+# TODO: import WakeWord and your LLM client here
+# from wake_word.wake_word import WakeWord
+# from llm.client import LLMClient
+
+
+class OctyVoiceEngine:
     def __init__(self):
-        self.log = logging.getLogger("Octybot")
+        self.log = logging.getLogger("OctyVoice")
         model = LoadModel()
         
-        #Speech-to-Text
+        # Audio Listener
         self.audio_listener = AudioListener()
-        self.wake_word = WakeWord(str(model.ensure_model("wake_word")[0]))
-        self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "small") #Other Model "base", id = 1
 
-        #LLM
-        self.llm = LlmAgent(model_path = str(model.ensure_model("llm")[0]))
+        # Speech to Text (Whisper)
+        # Ensure WakeWord is imported or remove if unused
+        # self.wake_word = WakeWord(str(model.ensure_model("wake_word")[0]))
+        self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "small")  # Other Model "base", id = 1
 
-        #Text-to-Speech
+        # Text to Speech (Piper)
         self.tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
         
-        self.log.info("Octybot Agent Listo ✅")
-    
+        # TODO: create/assign your LLM instance to self.llm or remove usage
+        # self.llm = LLMClient(...)
 
-    def main(self):
-        """" This is the state machine logic to work with the system.
-            - First you start the Audio Listener Process 
-            - Then check if wake_word is detected
-            - If is detected you make the stt process
-            - Pass this info to the llm
-            - The llm split the answers 
-            - Publish the answer as tts"""
-        
-        self.audio_listener.start_stream()
-        text_transcribed = None
+        self.log.info("OctyVoice Ready")
 
-        while text_transcribed == None:
-            audio_capture = self.audio_listener.read_frame(self.wake_word.frame_samples)
-            wake_word_buffer =  self.wake_word.wake_word_detector(audio_capture)
-            text_transcribed = self.stt.worker_lopp(wake_word_buffer)
-            
-        self.audio_listener.stop_stream()
-        for out in self.llm.ask(text_transcribed):
-            get_audio = self.tts.synthesize(out)
-            self.tts.play_audio_with_amplitude(get_audio)
-    
+    def record_until_interrupt(self):
+        """Records audio in a separate thread until Enter is pressed. Returns bytes."""
+        frames = []
+        stop_event = threading.Event()
+
+        def _record_loop():
+            try:
+                self.audio_listener.start_stream()
+                while not stop_event.is_set():
+                    try:
+                        data = self.audio_listener.read_frame(AUDIO_LISTENER_FRAMES_PER_BUFFER)
+                        if data:
+                            frames.append(data)
+                    except Exception as e:
+                        self.log.error(f"Recording error: {e}")
+                        break
+            finally:
+                try:
+                    self.audio_listener.stop_stream()
+                except Exception:
+                    pass
+
+        t = threading.Thread(target=_record_loop, daemon=True)
+        t.start()
+
+        try:
+            input(" Recording... Press Enter to stop.\n")
+        finally:
+            stop_event.set()
+            t.join()
+
+        return b"".join(frames)
+
+    def run(self):
+        print("\n--- OctyVoice is running ---\n")
+        try:
+            while True:
+                input("Press Enter to start recording\n")
+
+                # Record
+                audio_data = self.record_until_interrupt()
+
+                if not audio_data:
+                    print("No audio data recorded.")
+                    continue
+
+                print(" Processing...")
+
+                # Transcribe
+                text_transcribed = self.stt.transcribe_audio_bytes(audio_data)
+
+                if text_transcribed:
+                    print(f" Transcribed Text: {text_transcribed}")
+
+                    # Generate response - ensure self.llm exists or replace with your logic
+                    if hasattr(self, "llm"):
+                        response = self.llm.ask(text_transcribed)
+                    else:
+                        response = "No LLM configured."
+
+                    # Synthesize and play response
+                    wav_data = self.tts.synthesize(response)
+                    self.tts.play_audio_with_amplitude(wav_data)
+                else:
+                    print(" No transcribed text.")
+        except KeyboardInterrupt:
+            print("\n--- Stopping OctyVoice ---\n")
+            self.stop()
+
     def stop(self):
-        self.audio_listener.deleate()
-        self.tts.stop_tts()
+        try:
+            self.audio_listener.delete()
+        except Exception:
+            pass
+        try:
+            self.tts.stop_tts()
+        except Exception:
+            pass
+        self.log.info("OctyVoice Stopped")
 
-    
 
-            
- #———— Example Usage ————-
-if "__main__" == __name__:
-    logging.basicConfig(level=logging.INFO, format="[%(levelname)s %(asctime)s] [%(name)s] %(message)s")
-
-    try:
-        llm = OctybotAgent()
-        last_batt=llm.llm.get_info.set_battery(percentage=0.67),
-        print("Hola soy tu Agente vistual Octybot 🤖:")
-        print("Prueba a decir 'ok robot' y darme una instrucción - Presiona (Ctrl+C para salir):")
-        print("(Ejemplos: '¿Dónde estoy?', '¿Cuál es tu batería?', 'Ve a la enfermería', '¿Cuándo fue la Independencia de México y cuál es mi batería?')")
-        while True:
-            print("> Quieres preguntar algo: ")
-            llm.main() 
-    except KeyboardInterrupt:
-        llm.stop()
-        print("Saliendo")
-        exit(0)
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+    engine = OctyVoiceEngine()
+    engine.run()
