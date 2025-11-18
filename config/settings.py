@@ -17,7 +17,7 @@ DEVICE_SELECTOR_TTS = "cpu" # "cpu" or "cuda"
 VOLUME_TTS = 2.0 #Volume  of the TTS
 SPEED_TTS = 1.0 # 1.0 = Fast and 2.0 = slow
 PATH_TO_SAVE_TTS = "tts/audios" #Specify the PATH where we are going to save the Info
-NAME_OF_OUTS_TTS = "output" #This is the name that your file is going to revive Ex: test_0.wav -> A subfolder /test is gonna be created
+NAME_OF_OUTS_TTS = "output" #This is the name that your file is going to receive Ex: test_0.wav -> A subfolder /test is gonna be created
 SAVE_WAV_TTS = False
 
 """Speech-to-Text"""

@@ -1,5 +1,5 @@
 # Core logic
-numpy==2.2.6
+numpy==2.1.x
 pyaudio==0.2.14
 pyyaml==6.0.2
 typeguard==4.4.4
@@ -7,7 +7,7 @@ requests==2.31.0
 
 #text-to-speech
 piper-tts==1.3.0
-torch==2.8.0
+torch==2.5.x
 
 # Speech-to-text
 torchaudio==2.8.0

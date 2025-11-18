@@ -2,13 +2,13 @@ import pyaudio
 from config.settings import AUDIO_LISTENER_DEVICE_ID, AUDIO_LISTENER_SAMPLE_RATE, AUDIO_LISTENER_CHANNELS, AUDIO_LISTENER_FRAMES_PER_BUFFER
 import logging
 
-def define_device_id(pa:pyaudio.PyAudio = None, prefered:int = AUDIO_LISTENER_DEVICE_ID, log:logging.getLogger = None) -> int:
+def define_device_id(pa:pyaudio.PyAudio = None, preferred:int = AUDIO_LISTENER_DEVICE_ID, log:logging.Logger = None) -> int:
     """ Define the device id to use for audio input."""
-    if prefered is not None:
+    if preferred is not None:
         try:
-            return prefered
+            return preferred
         except Exception as e:
-            log.info(f"Error using preferred device_index {prefered}: {e}")
+            log.info(f"Error using preferred device_index {preferred}: {e}")
     
     elif pa is None:
         log.warning(f"Pyaudio instance not started, cannot list devices.")

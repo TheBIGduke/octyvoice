@@ -18,15 +18,10 @@ class OctyVoiceEngine:
         self.audio_listener = AudioListener()
 
         # Speech to Text (Whisper)
-        # Ensure WakeWord is imported or remove if unused
-        # self.wake_word = WakeWord(str(model.ensure_model("wake_word")[0]))
         self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "small")  # Other Model "base", id = 1
 
         # Text to Speech (Piper)
         self.tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
-        
-        # TODO: create/assign your LLM instance to self.llm or remove usage
-        # self.llm = LLMClient(...)
 
         self.log.info("OctyVoice Ready")
 
