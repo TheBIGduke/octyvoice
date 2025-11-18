@@ -10,8 +10,11 @@ class SpeechToText:
     def __init__(self, model_path: str, model_name: str) -> None:
         self.log = logging.getLogger("SpeechToText")    
         model_path = Path(model_path)
-        # Load Whisper model
-        self.model = whisper.load_model(model_name, download_root=str(model_path.parent))
+        self.model = whisper.load_model(
+            model_name, 
+            download_root=str(model_path.parent),
+            device='cpu'
+        )
 
     def stt_from_bytes(self, audio_bytes: bytes) -> Optional[str]:
         """Convert bytes (Int16) -> float32 array and run Whisper transcription."""

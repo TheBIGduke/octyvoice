@@ -8,7 +8,7 @@ MODELS_PATH = "config/models.yml"
 AUDIO_LISTENER_DEVICE_ID: int | None = None  # Auto-detect best device, or specify device ID
 AUDIO_LISTENER_CHANNELS = 1  # mono
 AUDIO_LISTENER_SAMPLE_RATE = 16000
-AUDIO_LISTENER_FRAMES_PER_BUFFER = 1000
+AUDIO_LISTENER_FRAMES_PER_BUFFER = 512
 
 """Text-to-Speech"""
 SAMPLE_RATE_TTS = 24000

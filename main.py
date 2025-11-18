@@ -84,7 +84,7 @@ class OctyVoiceEngine:
                     print(f"Transcribed: {text}")
 
                     # Echo response
-                    response_text = f"You said: {text}"
+                    response_text = f"{text}"
 
                     # Synthesize and play
                     audio_out = self.tts.synthesize(response_text)
