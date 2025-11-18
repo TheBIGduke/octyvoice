@@ -1,9 +1,8 @@
 # OctyVoice Engine
 
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**OctyVoice Engine** is a lightweight Python package for real-time speech-to-text and text-to-speech conversion. It provides a simple offline voice pipeline that captures audio from your microphone, transcribes it using Whisper, and responds using Piper TTS. This is a simplified version focused solely on the STT-to-TTS core functionality.
+**OctyVoice Engine** is a lightweight Python package for real-time speech-to-text and text-to-speech conversion. It provides a simple offline voice pipeline that captures audio from your microphone, transcribes it using Whisper, and responds using Piper TTS.
 
 ---
 
@@ -12,14 +11,14 @@
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Quick Start](#quick-start)
-- [Usage](#usage)
+- [Usage Examples](#usage-examples)
 - [Project Structure](#project-structure)
 - [Based On](#based-on)
 - [Troubleshooting](#troubleshooting)
 
 ---
 
-<h2 id="features">Features</h2>
+## Features
 
 - **Real-time Speech-to-Text** – Uses OpenAI Whisper for accurate transcription
 - **Text-to-Speech Synthesis** – Piper TTS for natural-sounding voice output
@@ -30,27 +29,24 @@
 
 ---
 
-<h2 id="installation">Installation</h2>
+## Installation
 
 > [!IMPORTANT]
-> This implementation was tested on Ubuntu 22.04 with Python 3.10.12
+> Tested on Ubuntu 22.04 with Python 3.10.12. Should work on most Linux distributions.
 
 ### Prerequisites
 - Python 3.10 or higher
 - Git
 - System audio libraries (PortAudio, FFmpeg)
 
-### Cloning this Repo
+### Quick Setup
+
 ```bash
 # Clone the repository
 git clone https://github.com/TheBIGduke/octyvoice.git
 cd octyvoice
-```
 
-### Setup
-
-#### For automatic installation and setup:
-```bash
+# Run automatic installer
 bash installer.sh
 ```
 
@@ -61,7 +57,7 @@ The installer will:
 4. Install Python dependencies
 5. Download required models (Whisper, Piper)
 
-#### For manual installation:
+### Manual Installation
 
 ```bash
 # Install system dependencies
@@ -83,72 +79,79 @@ pip install -r requirements.txt
 bash utils/download_models.sh
 ```
 
-You're done when you see:
+Setup is complete when you see:
 ```
 Models ready.
 ```
 
 ---
 
-<h2 id="configuration">Configuration</h2>
+## Configuration
 
 > [!WARNING]
 > Audio models can be large. Ensure you have enough disk space (~500MB for models).
 
-### Settings (`config/settings.py`)
+### Runtime Settings (`config/settings.py`)
 
-All runtime settings are in **`config/settings.py`**. Edit the file and restart scripts to apply changes.
+All configuration is centralized in `config/settings.py`. Edit and restart to apply changes.
 
-#### Global Settings
+#### Global Configuration
 ```python
-LANGUAGE = "es"  # Language for Whisper transcription
+LANGUAGE = "es"  # Language for Whisper transcription (ISO 639-1 code)
+MODELS_PATH = "config/models.yml"  # Path to model catalog
 ```
 
-#### Audio Listener Settings
+#### Audio Listener
 ```python
 AUDIO_LISTENER_DEVICE_ID = None  # Auto-detect, or specify device ID
 AUDIO_LISTENER_CHANNELS = 1      # Mono audio
-AUDIO_LISTENER_SAMPLE_RATE = 16000
-AUDIO_LISTENER_FRAMES_PER_BUFFER = 1000
+AUDIO_LISTENER_SAMPLE_RATE = 16000  # 16kHz for Whisper
+AUDIO_LISTENER_FRAMES_PER_BUFFER = 512  # Buffer size
 ```
 
-#### Text-to-Speech Settings
+#### Text-to-Speech
 ```python
-SAMPLE_RATE_TTS = 24000   # Piper TTS sample rate
-VOLUME_TTS = 2.0          # Volume multiplier
-SPEED_TTS = 1.0           # Speech speed (1.0 = normal)
-SAVE_WAV_TTS = False      # Save audio files to disk
+SAMPLE_RATE_TTS = 24000       # Piper TTS sample rate
+VOLUME_TTS = 2.0              # Volume multiplier (1.0 = normal)
+LENGTH_SCALE_TTS = 1.0        # Speed (1.0 = normal, >1.0 = slower)
+SAVE_WAV_TTS = False          # Save audio files to disk
 PATH_TO_SAVE_TTS = "tts/audios"
 NAME_OF_OUTS_TTS = "output"
 ```
 
-#### Speech-to-Text Settings
+#### Speech-to-Text
 ```python
-SAMPLE_RATE_STT = 16000        # Whisper expects 16kHz
-SELF_VOCABULARY_STT = "Octybot"  # Custom vocabulary hint
+SAMPLE_RATE_STT = 16000           # Whisper expects 16kHz
+SELF_VOCABULARY_STT = "Octybot"   # Custom vocabulary hint
 ```
 
 ### Model Configuration (`config/models.yml`)
 
-Define which models to download and use:
+Define which models to download:
 
 ```yaml
 stt:
+  # Whisper models
+  - name: base.pt
+    url: "https://openaipublic.azureedge.net/main/whisper/models/..."
   - name: small.pt
     url: "https://openaipublic.azureedge.net/main/whisper/models/..."
 
 tts:
+  # Piper models
   - name: es_419-Octybot-medium.onnx
     url: "https://drive.google.com/uc?export=download&id=..."
   - name: es_419-Octybot-medium.onnx.json
     url: "https://drive.google.com/uc?export=download&id=..."
 ```
 
-Models are cached in `~/.cache/Local-LLM-for-Robots/`
+**Cache Location:**
+- Default: `~/.cache/OctyVoice/`
+- Custom: Set `OCTYVOICE_CACHE` environment variable
 
 ---
 
-<h2 id="quick-start">Quick Start</h2>
+## Quick Start
 
 ```bash
 cd octyvoice
@@ -157,43 +160,36 @@ source .venv/bin/activate
 
 ### Run the Voice Pipeline
 
-Start the main program:
 ```bash
 python main.py
 ```
 
 **Usage:**
-1. Press Enter to start recording
+1. Press **Enter** to start recording
 2. Speak into your microphone
-3. Press Enter again to stop recording
-4. The system will transcribe your speech
-5. You'll hear "You said: [your text]" played back
+3. Press **Enter** again to stop
+4. Listen to the transcription playback
 
-### Test Individual Modules
+Press **Ctrl+C** to exit.
 
-#### Audio Listener
+### Test Individual Components
+
 ```bash
+# Test audio capture (3 second recording)
 python -m stt.audio_listener
-```
 
-#### Speech-to-Text
-```bash
-python -m stt.speech_to_text
-```
-
-#### Text-to-Speech
-```bash
+# Test text-to-speech (interactive prompt)
 python -m tts.text_to_speech
 ```
 
 > [!TIP]
-> If you have problems launching modules, try: `./.venv/bin/python -m stt.speech_to_text`
+> If module imports fail, try: `./.venv/bin/python -m stt.audio_listener`
 
 ---
 
-<h2 id="usage">Usage</h2>
+## Usage Examples
 
-### Basic Example
+### Basic Voice Pipeline
 
 ```python
 from utils.utils import LoadModel
@@ -204,26 +200,41 @@ from tts.text_to_speech import TTS
 # Initialize models
 model = LoadModel()
 audio_listener = AudioListener()
-stt = SpeechToText(str(model.ensure_model("stt")[1]), "small")
-tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
+
+stt_model = model.ensure_model("stt", "small.pt")
+stt = SpeechToText(str(stt_model), "small")
+
+tts_model = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
+tts_config = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
+tts = TTS(str(tts_model), str(tts_config))
 
 # Record audio
 audio_listener.start_stream()
-# ... capture audio frames ...
+frames = []
+for _ in range(100):
+    data = audio_listener.read_frame(1024)
+    frames.append(data)
 audio_listener.stop_stream()
 
 # Transcribe
-text = stt.stt_from_bytes(audio_data)
+audio_bytes = b"".join(frames)
+text = stt.stt_from_bytes(audio_bytes)
+print(f"Transcribed: {text}")
 
 # Synthesize and play
 audio_out = tts.synthesize(text)
 tts.play_audio_with_amplitude(audio_out)
+
+# Cleanup
+audio_listener.delete()
+tts.stop_tts()
 ```
 
 ### Recording Audio
 
 ```python
 from stt.audio_listener import AudioListener
+import time
 
 listener = AudioListener()
 listener.start_stream()
@@ -236,14 +247,22 @@ for _ in range(100):
 
 listener.stop_stream()
 audio_bytes = b"".join(frames)
+
+# Cleanup
+listener.delete()
 ```
 
 ### Transcribing Audio
 
 ```python
 from stt.speech_to_text import SpeechToText
+from utils.utils import LoadModel
 
-stt = SpeechToText("path/to/model.pt", "small")
+model = LoadModel()
+stt_path = model.ensure_model("stt", "small.pt")
+stt = SpeechToText(str(stt_path), "small")
+
+# Transcribe from bytes
 text = stt.stt_from_bytes(audio_bytes)
 print(f"Transcribed: {text}")
 ```
@@ -252,104 +271,130 @@ print(f"Transcribed: {text}")
 
 ```python
 from tts.text_to_speech import TTS
+from utils.utils import LoadModel
 
-tts = TTS("path/to/model.onnx", "path/to/model.onnx.json")
+model = LoadModel()
+tts_model = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
+tts_config = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
+
+tts = TTS(str(tts_model), str(tts_config))
+
+# Generate and play audio
 audio = tts.synthesize("Hello world")
 tts.play_audio_with_amplitude(audio)
+
+# Cleanup
+tts.stop_tts()
+```
+
+### Using Amplitude Callback
+
+```python
+def on_amplitude(amp):
+    """Called for each audio chunk during playback"""
+    print(f"Current amplitude: {amp:.2f}")
+
+audio = tts.synthesize("Testing amplitude")
+tts.play_audio_with_amplitude(audio, amplitude_callback=on_amplitude)
 ```
 
 ---
 
-<h2 id="project-structure">Project Structure</h2>
+## Project Structure
 
 ```
-OctyVoice-Engine/
+octyvoice/
 ├── config/
 │   ├── __init__.py
-│   ├── models.yml          # Model catalog (download URLs)
+│   ├── models.yml          # Model catalog with download URLs
 │   └── settings.py         # Runtime configuration
 │
-├── stt/
-│   ├── audio_listener.py   # Microphone audio capture
-│   └── speech_to_text.py   # Whisper STT wrapper
+├── stt/                    # Speech-to-Text components
+│   ├── audio_listener.py   # Microphone capture (PyAudio wrapper)
+│   └── speech_to_text.py   # Whisper transcription
 │
-├── tts/
-│   └── text_to_speech.py   # Piper TTS synthesis and playback
+├── tts/                    # Text-to-Speech components
+│   └── text_to_speech.py   # Piper synthesis and playback
 │
 ├── utils/
 │   ├── __init__.py
-│   ├── download_models.sh  # Model download script
-│   └── utils.py            # Model loading utilities
+│   ├── download_models.sh  # Automated model downloader
+│   └── utils.py            # Model loading and validation
 │
 ├── main.py                 # Main voice pipeline
 ├── requirements.txt        # Python dependencies
-├── installer.sh            # Automatic setup script
+├── installer.sh            # Automated setup script
 ├── .gitignore
 └── README.md
 ```
 
-### File Responsibilities
+### Component Responsibilities
 
-#### main.py
-- **OctyVoiceEngine class** – Main pipeline coordinator
-- **Recording logic** – Threaded audio capture with Enter key control
-- **Echo functionality** – Transcribe → Synthesize → Play
-- **Resource management** – Proper cleanup on exit
+**main.py** – `OctyVoiceEngine` class
+- Orchestrates the complete voice pipeline
+- Manages threaded audio recording with Enter key control
+- Handles transcription and synthesis flow
+- Resource cleanup on exit (Ctrl+C)
 
-#### stt/audio_listener.py
-- **PyAudio wrapper** – Simplified audio capture interface
-- **Device detection** – Auto-select best microphone
-- **Stream management** – Start/stop recording safely
-- **Frame reading** – Efficient audio data buffering
+**stt/audio_listener.py** – `AudioListener` class
+- PyAudio wrapper for microphone input
+- Auto-detects audio devices (prefers PulseAudio on Linux)
+- Stream lifecycle management (start/stop/delete)
+- Frame-based audio buffering
 
-#### stt/speech_to_text.py
-- **Whisper integration** – Load and run OpenAI Whisper models
-- **Audio preprocessing** – Convert raw bytes to float32 arrays
-- **Transcription** – Convert speech to text with language support
-- **Error handling** – Graceful failure on invalid audio
+**stt/speech_to_text.py** – `SpeechToText` class
+- Loads Whisper models from cache
+- Converts raw audio bytes (int16) to float32 arrays
+- Transcribes speech with language and vocabulary support
+- Returns transcribed text or None on failure
 
-#### tts/text_to_speech.py
-- **Piper TTS wrapper** – Text-to-speech synthesis
-- **Audio playback** – Real-time streaming with PyAudio
-- **Volume control** – Configurable amplitude
-- **Speed adjustment** – Configurable speech rate
-- **Optional saving** – Write WAV files to disk
+**tts/text_to_speech.py** – `TTS` class
+- Piper TTS voice synthesis
+- Real-time audio playback via PyAudio
+- Configurable volume and speech speed
+- Optional WAV file saving
+- Amplitude callback support for visualizations
 
-#### utils/utils.py
-- **Model management** – Load models from cache
-- **YAML parsing** – Read model configuration
-- **Path validation** – Ensure models exist before use
+**utils/utils.py** – `LoadModel` class
+- Parses `config/models.yml` configuration
+- Resolves model paths in cache directory
+- Validates model existence before use
+- Supports lookup by section and model name
 
-#### utils/download_models.sh
-- **Automated downloads** – Fetch models from URLs
-- **Cache management** – Store models in user cache directory
-- **Dependency checking** – Verify yq and curl/wget availability
-
----
-
-<h2 id="based-on"> Based On</h2>
-
-This project is a streamlined derivative of [**Local-LLM-for-Robots**](https://github.com/JossueE/Local-LLM-for-Robots) by JossueE. The original repository provides a complete robot voice interaction system including wake word detection, LLM integration, and avatar visualization. 
-
-**OctyVoice Engine** extracts and simplifies the core STT/TTS pipeline for users who need just the voice conversion functionality without the additional robot-specific features.
-
-If you need the full robot interaction system, please visit the [original repository](https://github.com/JossueE/Local-LLM-for-Robots).
+**utils/download_models.sh**
+- Downloads models from URLs in `models.yml`
+- Stores in `~/.cache/OctyVoice/` (or `$OCTYVOICE_CACHE`)
+- Skips already downloaded files
+- Uses curl or wget with retry logic
 
 ---
 
-<h2 id="troubleshooting">Troubleshooting</h2>
+## Based On
+
+This project is derived from [**Local-LLM-for-Robots**](https://github.com/JossueE/Local-LLM-for-Robots) by JossueE. The original repository provides a complete robot voice interaction system including wake word detection, LLM integration, and avatar visualization.
+
+**OctyVoice Engine** extracts and simplifies the core STT/TTS pipeline for users who need just voice conversion functionality without robot-specific features.
+
+For the full system, visit the [original repository](https://github.com/JossueE/Local-LLM-for-Robots).
+
+---
+
+## Troubleshooting
 
 ### Models Not Found
 
-**Error: "Model file does not exist"**
+**Error:** `FileNotFoundError: Model file does not exist`
 
 ```bash
 # Re-download models
 bash utils/download_models.sh
 
-# Check cache directory
-ls ~/.cache/Local-LLM-for-Robots/stt/
-ls ~/.cache/Local-LLM-for-Robots/tts/
+# Verify cache directory
+ls ~/.cache/OctyVoice/stt/
+ls ~/.cache/OctyVoice/tts/
+
+# Check custom cache location
+echo $OCTYVOICE_CACHE
 ```
 
 ---
@@ -364,22 +409,28 @@ ls ~/.cache/Local-LLM-for-Robots/tts/
    pa = pyaudio.PyAudio()
    for i in range(pa.get_device_count()):
        info = pa.get_device_info_by_index(i)
-       print(f"[{i}] {info['name']} (in={info['maxInputChannels']})")
+       if info['maxInputChannels'] > 0:
+           print(f"[{i}] {info['name']} (channels={info['maxInputChannels']})")
    ```
 
-2. **Specify device in settings.py:**
+2. **Specify device in `config/settings.py`:**
    ```python
    AUDIO_LISTENER_DEVICE_ID = 5  # Use your device index
    ```
 
-3. **Check permissions:**
+3. **Check permissions (Linux):**
    ```bash
-   # Linux: Add user to audio group
    sudo usermod -a -G audio $USER
    # Logout and login again
    ```
 
-**Linux PulseAudio issues:**
+4. **Test microphone:**
+   ```bash
+   arecord -d 5 test.wav
+   aplay test.wav
+   ```
+
+**PulseAudio issues (Linux):**
 ```bash
 # Restart PulseAudio
 pulseaudio --kill
@@ -392,8 +443,8 @@ pulseaudio --start
 
 **Empty transcriptions or "Could not understand the audio"**
 
-- **Record longer audio** – Whisper needs at least 1-2 seconds
-- **Check microphone volume** – Speak louder or increase system volume
+- **Record longer audio** – Whisper needs at least 1-2 seconds of speech
+- **Check microphone volume** – Speak louder or increase system input gain
 - **Verify language setting:**
   ```python
   # config/settings.py
@@ -401,8 +452,9 @@ pulseaudio --start
   ```
 - **Try different Whisper model:**
   ```python
-  # main.py - Change from "small" to "base"
-  self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "base")
+  # main.py - Change model size
+  stt_model_path = model.ensure_model("stt", "base.pt")  # Instead of small.pt
+  self.stt = SpeechToText(str(stt_model_path), "base")
   ```
 
 ---
@@ -412,25 +464,34 @@ pulseaudio --start
 **No audio output or distorted sound**
 
 1. **Check system volume** – Ensure speakers/headphones are working
-2. **Adjust TTS volume in settings.py:**
-   ```python
-   VOLUME_TTS = 1.0  # Reduce if too loud
+   ```bash
+   speaker-test -t wav -c 2
    ```
+
+2. **Adjust TTS volume in `config/settings.py`:**
+   ```python
+   VOLUME_TTS = 1.0  # Reduce from 2.0 if too loud
+   ```
+
 3. **Verify sample rate:**
    ```python
    SAMPLE_RATE_TTS = 24000  # Piper default
    ```
+
 4. **Test PyAudio output:**
    ```python
    import pyaudio
    import numpy as np
    
    pa = pyaudio.PyAudio()
-   stream = pa.open(format=pyaudio.paInt16, channels=1, rate=24000, output=True)
+   stream = pa.open(format=pyaudio.paInt16, channels=1, 
+                    rate=24000, output=True)
    
-   # Play test tone
-   tone = (np.sin(2 * np.pi * 440 * np.arange(24000) / 24000) * 32767).astype(np.int16)
+   # Play 440Hz tone for 1 second
+   tone = (np.sin(2*np.pi*440*np.arange(24000)/24000)*32767).astype(np.int16)
    stream.write(tone.tobytes())
+   stream.close()
+   pa.terminate()
    ```
 
 ---
@@ -439,38 +500,33 @@ pulseaudio --start
 
 **High CPU usage or slow transcription**
 
-- **Use smaller Whisper model:**
-  ```python
-  # main.py - Use "base" instead of "small"
-  self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "base")
-  ```
-- **Reduce buffer size:**
+- Use smaller Whisper model: `base.pt` instead of `small.pt`
+- Reduce buffer size:
   ```python
   # config/settings.py
-  AUDIO_LISTENER_FRAMES_PER_BUFFER = 512  # From 1000
+  AUDIO_LISTENER_FRAMES_PER_BUFFER = 512  # Already optimized
   ```
+- Close other CPU-intensive applications
 
 **Slow TTS synthesis**
 
-- TTS uses CPU by default
 - First synthesis is slow (model loading)
-- Subsequent calls are faster
+- Subsequent calls are much faster
+- This is expected behavior with CPU-based inference
 
 ---
 
 ### Installation Issues
 
-**Error: "No module named 'pyaudio'"**
+**Error: `No module named 'pyaudio'`**
 
 ```bash
 # Install PortAudio development files first
 sudo apt install portaudio19-dev
-
-# Then install Python package
 pip install pyaudio
 ```
 
-**Error: "command 'yq' not found"**
+**Error: `command 'yq' not found`**
 
 ```bash
 sudo snap install yq
@@ -488,25 +544,32 @@ pip install -r requirements.txt
 
 ---
 
-### Common Errors
+### Common Runtime Errors
 
-**KeyboardInterrupt not working**
+**`KeyboardInterrupt` not working**
 
 - Press Ctrl+C twice
 - Or use Ctrl+Z then `kill %1`
 
 **"Recording... Press Enter to stop" stuck**
 
-- Press Enter (not Space or other keys)
-- Check terminal has focus
-- Try clicking terminal window first
+- Press **Enter** (not Space or other keys)
+- Ensure terminal window has focus
+- Try clicking the terminal window first
 
-**Audio files keep growing (if SAVE_WAV_TTS = True)**
+**Audio files accumulating (if `SAVE_WAV_TTS = True`)**
 
 ```python
-# Disable saving in settings.py
+# Disable saving in config/settings.py
 SAVE_WAV_TTS = False
 
 # Or clean up old files
 rm -rf tts/audios/*
 ```
+
+**Error: `RuntimeError: Audio stream has not been started`**
+
+- Ensure `start_stream()` is called before `read_frame()`
+- Check that stream didn't fail to start due to device issues
+
+---
