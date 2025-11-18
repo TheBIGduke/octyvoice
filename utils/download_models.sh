@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 MODELS_FILE="$SCRIPT_DIR/../config/models.yml"
-CACHE_DIR="$HOME/.cache/Local-LLM-for-Robots"
+CACHE_DIR="$HOME/.cache/OctyVoice"
 
 have_cmd(){ command -v "$1" >/dev/null 2>&1; }
 die(){ echo "ERROR: $*" >&2; exit 1; }

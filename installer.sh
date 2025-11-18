@@ -72,15 +72,15 @@ post_instructions() {
   cat <<'EOS'
 
 ────────────────────────────────────────────────────────────
-✅ Setup completed.
+SETUP COMPLETE!
 
 Next steps:
   1) Activate the virtual environment:
-       source Local-LLM-for-Robots/.venv/bin/activate
+       source octyvoice/.venv/bin/activate
   2) (Optional) Run the models script anytime:
-       bash Local-LLM-for-Robots/utils/download_models.sh
+       bash octyvoice/utils/download_models.sh
   3) You're ready to use the project.
-Tip: The cache lives in ~/.cache/Local-LLM-for-Robots or `$OCTOPY_CACHE` if set).
+Tip: The cache lives in ~/.cache/OctyVoice or `$OCTYVOICE_CACHE` if set).
 ────────────────────────────────────────────────────────────
 EOS
 }

@@ -35,13 +35,6 @@ env/
 *.exp
 *.pdb
 
-# LLM weights and large assets
-*.gguf
-*.pt
-*.bin
-*.ckpt
-
-
 # Generated media
 *.mp4
 *.mov

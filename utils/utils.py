@@ -44,7 +44,7 @@ class LoadModel:
         Ensure the model files exist in the cache directory.
         Returns a list of paths to the model files.
         """
-        base_dir = Path.home() / ".cache" / "Local-LLM-for-Robots"
+        base_dir = Path.home() / ".cache" / "octyvoice"
         models = []
         values = self.extract_section_models(section)
         
