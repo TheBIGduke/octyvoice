@@ -3,13 +3,12 @@ from config.settings import AUDIO_LISTENER_DEVICE_ID, AUDIO_LISTENER_SAMPLE_RATE
 import logging
 
 def define_device_id(pa:pyaudio.PyAudio = None, prefered:int = AUDIO_LISTENER_DEVICE_ID, log:logging.getLogger = None) -> int:
-
     """ Define the device id to use for audio input."""
     if prefered is not None:
         try:
             return prefered
         except Exception as e:
-            log.info(f"Error al usar device_index preferido {prefered}: {e}")
+            log.info(f"Error using preferred device_index {prefered}: {e}")
     
     elif pa is None:
         log.warning(f"Pyaudio instance not started, cannot list devices.")
@@ -21,7 +20,7 @@ def define_device_id(pa:pyaudio.PyAudio = None, prefered:int = AUDIO_LISTENER_DE
             if info.get('maxInputChannels', 0) > 0:
                 log.info(f"[{i}] {info['name']} (in={info['maxInputChannels']}, rate={int(info.get('defaultSampleRate',0))})")
                 if info['name'].lower() == "pulse":
-                    log.warning(f"[AudioListener - utils]Using PulseAudio device by default: {i}")
+                    log.warning(f"[AudioListener - utils] Using PulseAudio device by default: {i}")
                     return i
     
 class AudioListener:

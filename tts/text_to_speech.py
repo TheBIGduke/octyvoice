@@ -7,31 +7,29 @@ import pyaudio
 import logging
 from pathlib import Path
 from piper.voice import PiperVoice, SynthesisConfig
-from config.settings import  SAMPLE_RATE_TTS, SAVE_WAV_TTS, PATH_TO_SAVE_TTS, NAME_OF_OUTS_TTS, VOLUME_TTS, SPEED_TTS
+from config.settings import SAMPLE_RATE_TTS, SAVE_WAV_TTS, PATH_TO_SAVE_TTS, NAME_OF_OUTS_TTS, VOLUME_TTS, SPEED_TTS
 
 class TTS:
     def __init__(self, model_path:str, model_path_conf:str):
         print("-> Loading Whisper TTS model...")
         self.log = logging.getLogger("[Text-to-Speech]")    
-        self.voice = PiperVoice.load(model_path = model_path,config_path = model_path_conf )
+        self.voice = PiperVoice.load(model_path=model_path, config_path=model_path_conf)
         self.sample_rate = SAMPLE_RATE_TTS
         self.count_of_audios = 0
         self.out_path = Path(PATH_TO_SAVE_TTS) / Path(NAME_OF_OUTS_TTS) / Path(f"{NAME_OF_OUTS_TTS}_{self.count_of_audios}.wav")
         
         self.syn_config = SynthesisConfig(
-            volume = VOLUME_TTS,  # half as loud
-            length_scale = SPEED_TTS,  # twice as slow
-            noise_scale = 1.0,  # more audio variation
-            noise_w_scale = 1.0,  # more speaking variation
+            volume=VOLUME_TTS,  # half as loud
+            length_scale=SPEED_TTS,  # twice as slow
+            noise_scale=1.0,  # more audio variation
+            noise_w_scale=1.0,  # more speaking variation
             normalize_audio=False, # use raw audio from voice
         )
-
 
         self.pa = None
         self.stream = None
         
-
-        self.log.info("Text-To-Speech Inicializado")
+        self.log.info("Text-To-Speech Initialized")
 
     def synthesize(self, text: str):
         """Convert Text to Speech using Piper, return mono audio float32 [-1,1]"""
@@ -47,10 +45,10 @@ class TTS:
 
         mem = io.BytesIO()
         with wave.open(mem, "wb") as w:
-            # Piper setea params internamente; solo pásale el writer
-            self.voice.synthesize_wav(text,w, syn_config=self.syn_config)
+            # Piper sets params internally; just pass the writer
+            self.voice.synthesize_wav(text, w, syn_config=self.syn_config)
 
-        # Lee el WAV del buffer y devuélvelo como float32 normalizado
+        # Read WAV from buffer and return as normalized float32
         mem.seek(0)
         with wave.open(mem, "rb") as r:
             frames = r.readframes(r.getnframes())
@@ -78,7 +76,6 @@ class TTS:
         # Convert float32 [-1..1] to int16
         audio_int16 = np.clip(audio_data * 32767.0, -32767.0, 32767.0).astype(np.int16)
 
-
         chunk_size = 1024
         idx = 0
         total_frames = len(audio_int16)
@@ -94,7 +91,7 @@ class TTS:
                 amplitude_callback(amplitude)
 
             idx += chunk_size
-        self.stop_tts
+        self.stop_tts() # FIXED: Added parentheses
         return True
 
     def start_stream(self):
@@ -109,9 +106,13 @@ class TTS:
 
     def stop_tts(self):
         """Stop the stream"""
-        self.stream.stop_stream()
-        self.stream.close()
-        self.pa.terminate()
+        if self.stream is not None:
+            self.stream.stop_stream()
+            self.stream.close()
+            self.stream = None
+        if self.pa is not None:
+            self.pa.terminate()
+            self.pa = None
         
  #———— Example Usage ————
 if "__main__" == __name__:
@@ -123,13 +124,13 @@ if "__main__" == __name__:
     tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
 
     try: 
-        print("Este es el nodo de prueba del Text to Speech 🔊 - Presione Ctrl+C para salir\n")
+        print("This is the Text to Speech test node - Press Ctrl+C to exit\n")
         while True:
-            text = input("Escribe algo: ")
+            text = input("Write something: ")
             get_audio = tts.synthesize(text)
             tts.play_audio_with_amplitude(get_audio)
 
     except KeyboardInterrupt:
         tts.stop_tts()
-        print(" Saliendo")
+        print(" Exiting")
         exit(0)

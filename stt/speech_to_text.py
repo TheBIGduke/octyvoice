@@ -12,7 +12,7 @@ class SpeechToText:
         # Load Whisper model
         self.model = whisper.load_model(model_name, download_root=str(model_path.parent))
 
-    def worker_lopp(self, audio_bytes: bytes) -> Optional[str | None]:
+    def worker_loop(self, audio_bytes: bytes) -> Optional[str | None]:
         """Wrapper for STT that adds logging."""
         if audio_bytes is None:
             return None
