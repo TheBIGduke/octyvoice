@@ -1,352 +1,512 @@
-# Local LLM for Robots 🤖🦾
+# OctyVoice Engine
 
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-
-**Local-LLM-for-Robots** is a python package that fuses a local Large Language Model with a full offline speech pipeline, so robots can understand and respond using natural language without the cloud. This repo includes everything about the `Wake Word (activation word)` -> `STT (speech-to-text)` -> `LLM Module` -> `TTS (text-to-speech)`. Every module is organized in different folders. Therefore, if you want more details about the `LLM Module`, you can check the `README.md` that is into the `/llm` folder.
-
----
-## 📝 Flowchart
-<figure style="margin:0; text-align:center; border:1px solid #eaecef; padding:6px; border-radius:6px;">
-  <img src="Images/Introduction/NUCLEO-H563ZI.jpg"
-       alt="Placa NUCLEO-H563ZI"
-       style="max-width:100%; height:auto;" />
-  <figcaption style="font-size:0.9em; color:#6a737d; margin-top:4px;">
-    NUCLEO-H563ZI (STM32) — vista general de la placa.
-  </figcaption>
-</figure>
-<p align="right">
-  <a href="https://lucid.app/lucidchart/50ed3019-62f3-460d-a3e3-071d72727e35/view">Open in real size</a>
-</p>
-
----
-## 🎥 Short Demo
-Here’s a **short demo of the Avatar system in action** — showing how the visualization reacts when saying the wake-word and triggers the full interaction pipeline.
-
-<p align="center">
-  <a href="https://youtu.be/PP4M3LmFDbM" target="_blank">
-    <img src="https://img.youtube.com/vi/PP4M3LmFDbM/hqdefault.jpg" width="720" alt="Avatar Demo YouTube">
-  </a>
-</p>
-
-When the **wake word is detected**, the avatar changes its color and responds with speech.
-> [!NOTE]
-> This avatar system was originally developed by [TheBIGduke](https://github.com/TheBIGduke/OctoV) 
-
-![Avatar Demo](docs/avatar/avatar.gif)
+**OctyVoice Engine** is a lightweight Python package for real-time speech-to-text and text-to-speech conversion. It provides a simple offline voice pipeline that captures audio from your microphone, transcribes it using Whisper, and responds using Piper TTS. This is a simplified version focused solely on the STT-to-TTS core functionality.
 
 ---
 
-
-## 📚 Table of Contents
+## Table of Contents
+- [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-- [Contributing](#contributing) 
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+- [Project Structure](#project-structure)
+- [Based On](#based-on)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-<h2 id="installation">🛠️ Installation</h2>
+<h2 id="features">Features</h2>
+
+- **Real-time Speech-to-Text** – Uses OpenAI Whisper for accurate transcription
+- **Text-to-Speech Synthesis** – Piper TTS for natural-sounding voice output
+- **Offline Operation** – No cloud dependencies, all processing runs locally
+- **Simple Echo Pipeline** – Press Enter to record, automatic transcription and playback
+- **Configurable Audio** – Adjust sample rates, volumes, and audio devices
+- **Lightweight** – Minimal dependencies, focused on core functionality
+
+---
+
+<h2 id="installation">Installation</h2>
 
 > [!IMPORTANT]
-> This implementation was tested on Ubuntu 22.04 with Python 3.10.12 
+> This implementation was tested on Ubuntu 22.04 with Python 3.10.12
 
 ### Prerequisites
-- Git, CMake
-- (Optional) NVIDIA CUDA for GPU acceleration
+- Python 3.10 or higher
+- Git
+- System audio libraries (PortAudio, FFmpeg)
 
 ### Cloning this Repo
 ```bash
 # Clone the repository
-git clone https://github.com/JossueE/Local-LLM-for-Robots.git 
-cd Local-LLM-for-Robots
+git clone https://github.com/TheBIGduke/octyvoice.git
+cd octyvoice
 ```
+
 ### Setup
 
-#### For automatic installation and setup, run the installer:
+#### For automatic installation and setup:
 ```bash
 bash installer.sh
 ```
 
-#### For manual installation and setup:
+The installer will:
+1. Install system dependencies (PortAudio, FFmpeg)
+2. Install yq for YAML processing
+3. Create Python virtual environment
+4. Install Python dependencies
+5. Download required models (Whisper, Piper)
+
+#### For manual installation:
 
 ```bash
+# Install system dependencies
 sudo apt update
-
-# --- General installations ---
 sudo apt install -y python3-dev python3-venv build-essential curl unzip
-
-# --- STT (Speech-to-Text) ---
 sudo apt install -y portaudio19-dev ffmpeg
 
-# --- TTS (Text-to-Speech) ---
-# ffmpeg is already installed above, uncomment if you prefer to keep it separate
-# sudo apt install -y ffmpeg
-
-# --- LLM (YAML manipulation) ---
+# Install yq for model downloads
 sudo snap install yq
-```
-```bash
-# Create a virtual environment
+
+# Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-```
-```bash
-# Install dependencies
+
+# Install Python dependencies
 pip install -r requirements.txt
-```
-To check if the models were correctly downloaded or to download models:
-```bash
+
+# Download models
 bash utils/download_models.sh
 ```
-The script installs everything into your cache directory (`~/.cache/Local-LLM-for-Robots`, or `$OCTOPY_CACHE` if set).
-You’re done when you see:
-```bash
-"OK. Modelos listos en: $CACHE_DIR ✅ "
+
+You're done when you see:
 ```
+Models ready.
+```
+
 ---
 
-<h2 id="configuration">⚙️ Configuration</h2>
+<h2 id="configuration">Configuration</h2>
 
-> [!WARNING] 
-> LLMs and audio models can be large. Ensure you have enough **disk space** and **RAM/VRAM** for your chosen settings.
+> [!WARNING]
+> Audio models can be large. Ensure you have enough disk space (~500MB for models).
 
-### 🔧 General Settings (`config/settings.py`)
-All runtime settings live in **`config/settings.py`**. They are plain Python constants—edit the file and restart your scripts to apply changes.
+### Settings (`config/settings.py`)
 
-### 📦 Model catalog (`config/models.yml`)
-Define which models Octybot uses (LLM, STT, TTS, wake-word) along with their URLs and sample rates.
+All runtime settings are in **`config/settings.py`**. Edit the file and restart scripts to apply changes.
 
-### 🔗 Sytem Prompt Definition with `config/llm_system_prompt_def.py`
-To re-write or define a new **LLM - System Prompt**  
+#### Global Settings
+```python
+LANGUAGE = "es"  # Language for Whisper transcription
+```
 
-### 🌎 Data for Commun Questions and Places in a Map
-All general questions live in `config/general_rag.json`. Define the **New Question** in `triggers` and define the `answer`.
+#### Audio Listener Settings
+```python
+AUDIO_LISTENER_DEVICE_ID = None  # Auto-detect, or specify device ID
+AUDIO_LISTENER_CHANNELS = 1      # Mono audio
+AUDIO_LISTENER_SAMPLE_RATE = 16000
+AUDIO_LISTENER_FRAMES_PER_BUFFER = 1000
+```
 
-<h2 id="quick-start">⚡ Quick Start</h2>
+#### Text-to-Speech Settings
+```python
+SAMPLE_RATE_TTS = 24000   # Piper TTS sample rate
+VOLUME_TTS = 2.0          # Volume multiplier
+SPEED_TTS = 1.0           # Speech speed (1.0 = normal)
+SAVE_WAV_TTS = False      # Save audio files to disk
+PATH_TO_SAVE_TTS = "tts/audios"
+NAME_OF_OUTS_TTS = "output"
+```
+
+#### Speech-to-Text Settings
+```python
+SAMPLE_RATE_STT = 16000        # Whisper expects 16kHz
+SELF_VOCABULARY_STT = "Octybot"  # Custom vocabulary hint
+```
+
+### Model Configuration (`config/models.yml`)
+
+Define which models to download and use:
+
+```yaml
+stt:
+  - name: small.pt
+    url: "https://openaipublic.azureedge.net/main/whisper/models/..."
+
+tts:
+  - name: es_419-Octybot-medium.onnx
+    url: "https://drive.google.com/uc?export=download&id=..."
+  - name: es_419-Octybot-medium.onnx.json
+    url: "https://drive.google.com/uc?export=download&id=..."
+```
+
+Models are cached in `~/.cache/Local-LLM-for-Robots/`
+
+---
+
+<h2 id="quick-start">Quick Start</h2>
 
 ```bash
-cd Local-LLM-for-Robots 
+cd octyvoice
 source .venv/bin/activate
 ```
 
-### Launch the full pipeline (Wake-Word → STT → LLM → TTS)
+### Run the Voice Pipeline
 
-Start everything with:
+Start the main program:
 ```bash
-python -m main
-```
-Now say `ok robot` — the system will start listening and run the pipeline.
-
-### Run a Single Module’s Tests
-
-LLM Module
-```bash
-python -m llm.llm
+python main.py
 ```
 
-Speech to Text Module
+**Usage:**
+1. Press Enter to start recording
+2. Speak into your microphone
+3. Press Enter again to stop recording
+4. The system will transcribe your speech
+5. You'll hear "You said: [your text]" played back
+
+### Test Individual Modules
+
+#### Audio Listener
 ```bash
-#To test the Audio Listener 
-python -m stt.AudioListener
+python -m stt.audio_listener
+```
 
-#To test the Wake Word Detector
-python -m stt.wake_word
-
-#To test the Speech To Text
+#### Speech-to-Text
+```bash
 python -m stt.speech_to_text
 ```
 
-Text to Speech Module
+#### Text-to-Speech
 ```bash
 python -m tts.text_to_speech
 ```
 
 > [!TIP]
-> If you have some problems to launch modules, you should try to run with the `venv` as `./.venv/bin/python -m stt.speech_to_text`
-
-<h2 id="usage">🧪 Usage</h2>
-
-### LLM Module
-
-This is a **Minimal Example** of what you can do with this package.  
-Here you will find examples of how to run commands in terminal, trigger actions based on pattern matches, retrieve information from an endpoint, and more.  
-
-> [!TIP]  
-> When integrating this into your system, consider using the power of the LLM **only when truly necessary**.  
-> In most cases, tasks can be solved with regular expressions, consuming information from a RAG, either running commands in terminal or calling an endpoint.
-
-#### Agent Intents (`handle(data, tipo)`)
-| `tipo`     | What it does | Input `data` | Output shape | What it represents |
-|------------|--------------|---------------|--------------|--------------------|
-| `rag`      | Returns `data` as-is (external RAG already resolved). | Pre-composed **string** from your RAG (e.g., `general_rag.json`) | `str` | Consult information from a RAG or dataset. |
-| `general`  | Free-form Q&A via `llm.answer_general`. | Question | `str` | Minimal example of how to implement the LLM for general queries. |
-| `battery`  | Reads battery percentage via `tool_get_batt()`. | Reads **Battery** status | `str` like `Mi batería es: 84.0%` (or a “no reading” message) | Retrieve system information. |
-| `maps`     | Reads maps via `tool_get_maps_from_backend()` and classifies between “return maps” and “the number of maps”. | Reads **Maps** from an endpoint | Either the number of maps or the list of maps | Minimal example of consuming an API. |
-| `navigate` | Navigates to a named place or generates a short motion. Attempts `tool_nav(data)` first (RAG/`poses.json`): if found, replies **"Voy"** (execute) or **"Por allá"** (indicate/simulate). If not found, falls back to `llm.plan_motion(data)` → `_clamp_motion(...)` → `natural_move_llm(...)`. | Pre-composed string from your RAG (`poses.json`) or a natural-language command (e.g., `ve a la enfermería`, `gira 90° y avanza 0.5 m`). | Usually `str`. On fallback may return a **tuple**: `(mensaje, '{"yaw": <deg>, "distance": <m>}' )`. | Represents full integration: minimal example of running terminal commands to execute actions (`publish_natural_move()`). |
-
-> If you consume the agent’s reply topic, handle both cases for `navigate`:  
-> - Always log or speak the **text message** (the user-facing string).
-> - Optionally process the JSON telemetry if it’s present.
-
-> In other words, your subscriber must gracefully support both formats:
-> - Sometimes the agent will only send a plain, human-readable string (e.g., “Heading to the kitchen.”).
-> - Other times, it may include structured telemetry data (e.g., goal coordinates, ETA, path length).
+> If you have problems launching modules, try: `./.venv/bin/python -m stt.speech_to_text`
 
 ---
 
-#### Add a New Intent / Tool
-The flow is: **patterns → intent detection → router → tool implementation**.
-Your text is normalized (`norm_text`) before matching (lowercase, accents removed, courtesy words stripped), so keep patterns as simple as possible.
+<h2 id="usage">Usage</h2>
 
----
-##### 1) Declare patterns in `llm_patterns.py` 
-Add a compiled regex that captures the trigger words for your new intent (example: “time” intent).
+### Basic Example
 
 ```python
-# llm_patterns.py
-import re
+from utils.utils import LoadModel
+from stt.audio_listener import AudioListener
+from stt.speech_to_text import SpeechToText
+from tts.text_to_speech import TTS
 
-TIME_WORDS_RE = re.compile(r"""
-(?xi)
-\b(
-    hora|que\s+hora|time|current\s+time
-)\b
-""")
+# Initialize models
+model = LoadModel()
+audio_listener = AudioListener()
+stt = SpeechToText(str(model.ensure_model("stt")[1]), "small")
+tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
+
+# Record audio
+audio_listener.start_stream()
+# ... capture audio frames ...
+audio_listener.stop_stream()
+
+# Transcribe
+text = stt.stt_from_bytes(audio_data)
+
+# Synthesize and play
+audio_out = tts.synthesize(text)
+tts.play_audio_with_amplitude(audio_out)
 ```
-Add to the pattern executor
-```python
-# ______________________Cases that we want to execute_________________________________
 
-#Here we define the functions, with the corresponding patterns, that we want to execute
-INTENT_RES = {
-    "battery":   BATTERY_WORDS_RE,
-    "navigate":  MOV_VERB_RE,
-    "time":      TIME_WORDS_RE,             #<- NEW
-}
-
-#Here we define the priority of the functions to be executed
-INTENT_PRIORITY = ("time", "battery", "navigate") #<- NEW
-
-# kind_group: "first" (short) == first or "second" (long) == second determine wich works are executed first
-# need_user_input: True == needs the query to process the action, False == does not need it
-
-INTENT_ROUTING = {
-    "time":     {"kind_group": "first", "kind": "time",     "need_user_input": False},
-    "battery":  {"kind_group": "first", "kind": "battery",  "need_user_input": False},
-    "navigate": {"kind_group": "second", "kind": "navigate", "need_user_input": True},
-}
-```
----
-
-##### 2) Implement the tool in `llm_tools.py` (class GetInfo)
-Tools that should be spoken by **TTS should return a string**
-(if you return a dict, your loop will JSON-dump it).
+### Recording Audio
 
 ```python
-def tool_get_time(self) -> str:
-    from datetime import datetime
-    now = datetime.now()
-    return now.hour:02d, now.minute:02d 
+from stt.audio_listener import AudioListener
+
+listener = AudioListener()
+listener.start_stream()
+
+# Capture frames
+frames = []
+for _ in range(100):
+    data = listener.read_frame(1000)
+    frames.append(data)
+
+listener.stop_stream()
+audio_bytes = b"".join(frames)
 ```
 
-- Add the new function to the `handle` in `llm_router.py`
-
----
-
-##### 3) Wire it into the router
-Pass the tool to the `Router` constructor and handle it in `llm_router.py`.
+### Transcribing Audio
 
 ```python
+from stt.speech_to_text import SpeechToText
 
-# llm_router.py
-class Router:
-  . . .
-  self.get_info = get_info
-  self.handlers: Dict[str, Callable[[str], str]] = {
-    "rag": self.data_return,
-    "general": self.general_response_llm,
-    "battery": self.battery_publisher,
-    "navigate": self.navigation_publisher,
-    "time": self.publish_time,             #<- NEW
-  }
-    . . .
-    #------------ Handler or Router ------------------- 
-    def handle(self, data: str, tipo: str) -> str:
-       . . .
-
-    #-------------The Publishers-------------------------
-    def publish_time(self, data: str)-> str:                 #<- NEW
-      hours, minutes = self.get_info.tool_get_time() 
-      return f"Son las {hours}:{minutes}"
-
+stt = SpeechToText("path/to/model.pt", "small")
+text = stt.stt_from_bytes(audio_bytes)
+print(f"Transcribed: {text}")
 ```
----
-#### Avatar
-Enable a simple on-screen “avatar” to visualize the pipeline (wake-word → STT → LLM → TTS).
 
-##### 1) Turn it on
-
-Open `config/settings.py` and set:
+### Synthesizing Speech
 
 ```python
-AVATAR = True
+from tts.text_to_speech import TTS
+
+tts = TTS("path/to/model.onnx", "path/to/model.onnx.json")
+audio = tts.synthesize("Hello world")
+tts.play_audio_with_amplitude(audio)
 ```
-##### 2) Give it access to your I/O
-The avatar uses your microphone and speakers.
-For setup notes (devices, permissions, troubleshooting), see the [**README.md**](avatar/README.md)
-
-##### 3) Start the avatar
-From your project root, either:
-
-**Run the full pipeline** (recommended):
-```python
-python -m main
-```
-Or **run only the Wake Word** test (for a quick check):
-```python
-python -m stt.wake_word
-```
----
-##### What you should see
-- **Idle Mode →**  The ball (or badge) appears **blue** and remains static — no deformation.
-- **Wake-word detected →** The ball turns **gold**, indicating it’s actively **listening**.
-- **STT running →** The ball **deforms dynamically**, following the **waveforms** of your voice input.
-- **TTS speaking →** The ball returns to **blue** and **moves** according to the **output audio waveform**.
-
-> [!TIP]
-> If the ball doesn’t deform, you’ll see a message in the web interface.
-> This usually means there’s a configuration issue — please check the [**README.md**](avatar/README.md) for setup details.
-
-This will open a local HTML page (the avatar UI). Try the full flow: say **“ok robot, ¿cómo te llamas?”** and watch the indicators change.
-
-Then run this to validate if the system works, an html file is going to be oppened and you migth see this. try to follow the full pipeline as ok robot como te llamas. You can see How your ball change of color when you saw ok robot and then is set again to the other color when it start to speek. 
-
-
-<h2 id="contributing">🤝 Contributing</h2>
-Contributions are welcome! Please fork the repository and submit a pull request. For major changes, open an issue first to discuss what you would like to change.
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/your-feature-name`).
-3. Make your changes.
-4. Commit your changes (`git commit -m 'Add some amazing feature'`).
-5. Push to the branch (`git push origin feature/your-feature-name`).
-6. Open a Pull Request.
 
 ---
 
-<h2 id="license">📄 License</h2>
-This project is licensed under the [MIT License](LICENSE).
+<h2 id="project-structure">Project Structure</h2>
+
+```
+OctyVoice-Engine/
+├── config/
+│   ├── __init__.py
+│   ├── models.yml          # Model catalog (download URLs)
+│   └── settings.py         # Runtime configuration
+│
+├── stt/
+│   ├── audio_listener.py   # Microphone audio capture
+│   └── speech_to_text.py   # Whisper STT wrapper
+│
+├── tts/
+│   └── text_to_speech.py   # Piper TTS synthesis and playback
+│
+├── utils/
+│   ├── __init__.py
+│   ├── download_models.sh  # Model download script
+│   └── utils.py            # Model loading utilities
+│
+├── main.py                 # Main voice pipeline
+├── requirements.txt        # Python dependencies
+├── installer.sh            # Automatic setup script
+├── .gitignore
+└── README.md
+```
+
+### File Responsibilities
+
+#### main.py
+- **OctyVoiceEngine class** – Main pipeline coordinator
+- **Recording logic** – Threaded audio capture with Enter key control
+- **Echo functionality** – Transcribe → Synthesize → Play
+- **Resource management** – Proper cleanup on exit
+
+#### stt/audio_listener.py
+- **PyAudio wrapper** – Simplified audio capture interface
+- **Device detection** – Auto-select best microphone
+- **Stream management** – Start/stop recording safely
+- **Frame reading** – Efficient audio data buffering
+
+#### stt/speech_to_text.py
+- **Whisper integration** – Load and run OpenAI Whisper models
+- **Audio preprocessing** – Convert raw bytes to float32 arrays
+- **Transcription** – Convert speech to text with language support
+- **Error handling** – Graceful failure on invalid audio
+
+#### tts/text_to_speech.py
+- **Piper TTS wrapper** – Text-to-speech synthesis
+- **Audio playback** – Real-time streaming with PyAudio
+- **Volume control** – Configurable amplitude
+- **Speed adjustment** – Configurable speech rate
+- **Optional saving** – Write WAV files to disk
+
+#### utils/utils.py
+- **Model management** – Load models from cache
+- **YAML parsing** – Read model configuration
+- **Path validation** – Ensure models exist before use
+
+#### utils/download_models.sh
+- **Automated downloads** – Fetch models from URLs
+- **Cache management** – Store models in user cache directory
+- **Dependency checking** – Verify yq and curl/wget availability
 
 ---
 
-<h2 id="acknowledgements">🙏 Acknowledgements</h2>
+<h2 id="based-on"> Based On</h2>
 
-- [llama.cpp](https://github.com/ggerganov/llama.cpp)
-- [Vosk](https://alphacephei.com/vosk/)
-- [Qwen Models](https://huggingface.co/Qwen)
-- The ROS2 community
+This project is a streamlined derivative of [**Local-LLM-for-Robots**](https://github.com/JossueE/Local-LLM-for-Robots) by JossueE. The original repository provides a complete robot voice interaction system including wake word detection, LLM integration, and avatar visualization. 
+
+**OctyVoice Engine** extracts and simplifies the core STT/TTS pipeline for users who need just the voice conversion functionality without the additional robot-specific features.
+
+If you need the full robot interaction system, please visit the [original repository](https://github.com/JossueE/Local-LLM-for-Robots).
+
+---
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+### Models Not Found
+
+**Error: "Model file does not exist"**
+
+```bash
+# Re-download models
+bash utils/download_models.sh
+
+# Check cache directory
+ls ~/.cache/Local-LLM-for-Robots/stt/
+ls ~/.cache/Local-LLM-for-Robots/tts/
+```
+
+---
+
+### Audio Input Issues
+
+**No audio detected or "Audio stream has not been started"**
+
+1. **List available audio devices:**
+   ```python
+   import pyaudio
+   pa = pyaudio.PyAudio()
+   for i in range(pa.get_device_count()):
+       info = pa.get_device_info_by_index(i)
+       print(f"[{i}] {info['name']} (in={info['maxInputChannels']})")
+   ```
+
+2. **Specify device in settings.py:**
+   ```python
+   AUDIO_LISTENER_DEVICE_ID = 5  # Use your device index
+   ```
+
+3. **Check permissions:**
+   ```bash
+   # Linux: Add user to audio group
+   sudo usermod -a -G audio $USER
+   # Logout and login again
+   ```
+
+**Linux PulseAudio issues:**
+```bash
+# Restart PulseAudio
+pulseaudio --kill
+pulseaudio --start
+```
+
+---
+
+### Transcription Problems
+
+**Empty transcriptions or "Could not understand the audio"**
+
+- **Record longer audio** – Whisper needs at least 1-2 seconds
+- **Check microphone volume** – Speak louder or increase system volume
+- **Verify language setting:**
+  ```python
+  # config/settings.py
+  LANGUAGE = "es"  # Change to your language code
+  ```
+- **Try different Whisper model:**
+  ```python
+  # main.py - Change from "small" to "base"
+  self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "base")
+  ```
+
+---
+
+### TTS Playback Issues
+
+**No audio output or distorted sound**
+
+1. **Check system volume** – Ensure speakers/headphones are working
+2. **Adjust TTS volume in settings.py:**
+   ```python
+   VOLUME_TTS = 1.0  # Reduce if too loud
+   ```
+3. **Verify sample rate:**
+   ```python
+   SAMPLE_RATE_TTS = 24000  # Piper default
+   ```
+4. **Test PyAudio output:**
+   ```python
+   import pyaudio
+   import numpy as np
+   
+   pa = pyaudio.PyAudio()
+   stream = pa.open(format=pyaudio.paInt16, channels=1, rate=24000, output=True)
+   
+   # Play test tone
+   tone = (np.sin(2 * np.pi * 440 * np.arange(24000) / 24000) * 32767).astype(np.int16)
+   stream.write(tone.tobytes())
+   ```
+
+---
+
+### Performance Issues
+
+**High CPU usage or slow transcription**
+
+- **Use smaller Whisper model:**
+  ```python
+  # main.py - Use "base" instead of "small"
+  self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "base")
+  ```
+- **Reduce buffer size:**
+  ```python
+  # config/settings.py
+  AUDIO_LISTENER_FRAMES_PER_BUFFER = 512  # From 1000
+  ```
+
+**Slow TTS synthesis**
+
+- TTS uses CPU by default
+- First synthesis is slow (model loading)
+- Subsequent calls are faster
+
+---
+
+### Installation Issues
+
+**Error: "No module named 'pyaudio'"**
+
+```bash
+# Install PortAudio development files first
+sudo apt install portaudio19-dev
+
+# Then install Python package
+pip install pyaudio
+```
+
+**Error: "command 'yq' not found"**
+
+```bash
+sudo snap install yq
+```
+
+**Virtual environment activation fails**
+
+```bash
+# Recreate virtual environment
+rm -rf .venv
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+---
+
+### Common Errors
+
+**KeyboardInterrupt not working**
+
+- Press Ctrl+C twice
+- Or use Ctrl+Z then `kill %1`
+
+**"Recording... Press Enter to stop" stuck**
+
+- Press Enter (not Space or other keys)
+- Check terminal has focus
+- Try clicking terminal window first
+
+**Audio files keep growing (if SAVE_WAV_TTS = True)**
+
+```python
+# Disable saving in settings.py
+SAVE_WAV_TTS = False
+
+# Or clean up old files
+rm -rf tts/audios/*
+```

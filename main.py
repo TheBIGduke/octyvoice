@@ -17,16 +17,16 @@ class OctyVoiceEngine:
         # Audio Listener
         self.audio_listener = AudioListener()
 
-        # Speech to Text (Whisper)
-        self.stt = SpeechToText(str(model.ensure_model("stt")[0]), "small")  # Other Model "base", id = 1
+        # Speech to Text (Whisper) - using small model
+        self.stt = SpeechToText(str(model.ensure_model("stt")[1]), "small")
 
         # Text to Speech (Piper)
         self.tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
 
-        self.log.info("OctyVoice Ready")
+        self.log.info("OctyVoice ready")
 
     def record_until_interrupt(self):
-        """Records audio in a separate thread until Enter is pressed. Returns bytes."""
+        """Record audio in a separate thread until Enter is pressed. Returns audio bytes."""
         frames = []
         stop_event = threading.Event()
 
@@ -53,7 +53,7 @@ class OctyVoiceEngine:
         t.start()
 
         try:
-            input(" Recording... Press Enter to stop.\n")
+            input("Recording... Press Enter to stop.\n")
         except (KeyboardInterrupt, EOFError):
             pass
         finally:
@@ -63,48 +63,54 @@ class OctyVoiceEngine:
         return b"".join(frames)
 
     def run(self):
-        print("\n--- OctyVoice is running ---\n")
+        print("\n=== OctyVoice is running ===\n")
         try:
             while True:
                 input("Press Enter to start recording\n")
 
-                # Record
+                # Record audio
                 audio_data = self.record_until_interrupt()
 
                 if not audio_data:
                     print("No audio data recorded.")
                     continue
 
-                print(" Processing...")
+                print("Processing...")
 
                 # Transcribe
                 text = self.stt.stt_from_bytes(audio_data)
 
                 if text:
-                    print(f" Transcribed Text: {text}")
+                    print(f"Transcribed: {text}")
 
-                    # Echo logic
+                    # Echo response
                     response_text = f"You said: {text}"
 
-                    # Synthesize and play response
+                    # Synthesize and play
                     audio_out = self.tts.synthesize(response_text)
-                    self.tts.play_audio_with_amplitude(audio_out)
+                    if audio_out is not None:
+                        self.tts.play_audio_with_amplitude(audio_out)
                 else:
-                    print(" Could not understand the audio")
+                    print("Could not understand the audio")
 
         except KeyboardInterrupt:
-            print("\n--- Stopping OctyVoice ---\n")
+            print("\n=== Stopping OctyVoice ===\n")
             self.stop()
             sys.exit(0)
 
     def stop(self):
+        """Clean up resources."""
         try:
             self.audio_listener.delete()
             self.tts.stop_tts()
-        except Exception:
-            pass
+        except Exception as e:
+            self.log.error(f"Error during cleanup: {e}")
+
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(levelname)s] %(message)s"
+    )
     engine = OctyVoiceEngine()
     engine.run()
