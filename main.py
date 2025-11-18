@@ -17,11 +17,14 @@ class OctyVoiceEngine:
         # Audio Listener
         self.audio_listener = AudioListener()
 
-        # Speech to Text (Whisper) - using small model
-        self.stt = SpeechToText(str(model.ensure_model("stt")[1]), "small")
+        # Speech to Text (Whisper)
+        stt_model_path = model.ensure_model("stt", "small.pt")
+        self.stt = SpeechToText(str(stt_model_path), "small")
 
         # Text to Speech (Piper)
-        self.tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
+        tts_model_path = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
+        tts_conf_path = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
+        self.tts = TTS(str(tts_model_path), str(tts_conf_path))
 
         self.log.info("OctyVoice ready")
 

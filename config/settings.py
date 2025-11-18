@@ -13,7 +13,7 @@ AUDIO_LISTENER_FRAMES_PER_BUFFER = 512
 """Text-to-Speech"""
 SAMPLE_RATE_TTS = 24000
 VOLUME_TTS = 2.0  # Volume multiplier
-SPEED_TTS = 1.0  # 1.0 = normal speed, >1.0 = slower
+LENGTH_SCALE_TTS = 1.0  # 1.0 = normal speed, >1.0 = slower (Higher value = Slower speed)
 PATH_TO_SAVE_TTS = "tts/audios"  # Path to save audio files
 NAME_OF_OUTS_TTS = "output"  # Prefix for output files
 SAVE_WAV_TTS = False

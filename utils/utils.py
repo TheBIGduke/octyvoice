@@ -1,6 +1,7 @@
 from pathlib import Path
 import yaml
-from typing import Any, Dict, List, TypedDict
+import os
+from typing import Any, Dict, List, TypedDict, Union
 from config.settings import MODELS_PATH
 
 
@@ -39,23 +40,49 @@ class LoadModel:
             })
         return out
 
-    def ensure_model(self, section: str) -> List[Path]:
+    def ensure_model(self, section: str, model_name: str | None = None) -> Union[List[Path], Path]:
         """
         Ensure the model files exist in the cache directory.
-        Returns a list of paths to the model files.
+        If model_name is provided, returns the Path to that specific model.
+        Otherwise, returns a list of all model Paths in the section.
         """
-        base_dir = Path.home() / ".cache" / "octyvoice"
+        # Check for environment variable override, otherwise use default path
+        cache_env = os.getenv('OCTYVOICE_CACHE')
+        if cache_env:
+            base_dir = Path(cache_env)
+        else:
+            base_dir = Path.home() / ".cache" / "OctyVoice"
+
         models = []
         values = self.extract_section_models(section)
         
         for value in values:     
-            model_dir = base_dir / section / value.get('name')
-            if not model_dir.exists():
-                raise FileNotFoundError(
-                    f"Model file does not exist: {model_dir}\n"
-                    f"Run 'bash utils/download_models.sh' to download models."
-                )
-            models.append(model_dir)
+            name = value.get('name')
+            if not name:
+                continue
+
+            model_dir = base_dir / section / name
+
+            if model_name and name == model_name:
+                # Specific model lookup
+                if not model_dir.exists():
+                    raise FileNotFoundError(
+                        f"Specific model file '{model_name}' does not exist at {model_dir}\n"
+                        f"Run 'bash utils/download_models.sh' to download models."
+                    )
+                return model_dir
+            elif not model_name:
+                # List all models
+                if not model_dir.exists():
+                    raise FileNotFoundError(
+                        f"Model file does not exist: {model_dir}\n"
+                        f"Run 'bash utils/download_models.sh' to download models."
+                    )
+                models.append(model_dir)
+
+        if model_name and not models:
+            raise FileNotFoundError(f"Model '{model_name}' not found in config or cache.")
+            
         return models
 
 
@@ -64,3 +91,7 @@ if __name__ == "__main__":
     loader = LoadModel()
     model = loader.ensure_model("stt")
     print(f"STT model path: {model[0]}")
+    
+    # Test name lookup
+    small_whisper = loader.ensure_model("stt", "small.pt")
+    print(f"Small Whisper path: {small_whisper}")

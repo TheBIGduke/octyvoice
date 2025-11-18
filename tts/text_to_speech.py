@@ -12,7 +12,7 @@ from config.settings import (
     PATH_TO_SAVE_TTS,
     NAME_OF_OUTS_TTS,
     VOLUME_TTS,
-    SPEED_TTS
+    LENGTH_SCALE_TTS
 )
 
 
@@ -28,13 +28,14 @@ class TTS:
         
         self.syn_config = SynthesisConfig(
             volume=VOLUME_TTS,
-            length_scale=SPEED_TTS,
+            length_scale=LENGTH_SCALE_TTS,
             noise_scale=1.0,
             noise_w_scale=1.0,
             normalize_audio=False,
         )
 
-        self.pa = None
+        # Initialize PyAudio once for performance
+        self.pa = pyaudio.PyAudio()
         self.stream = None
         
         self.log.info("Text-To-Speech initialized")
@@ -79,7 +80,6 @@ class TTS:
 
         self.start_stream()
 
-        # Convert float32 [-1..1] to int16
         audio_int16 = np.clip(audio_data * 32767.0, -32767.0, 32767.0).astype(np.int16)
 
         chunk_size = 1024
@@ -96,15 +96,10 @@ class TTS:
                 amplitude_callback(amplitude)
 
             idx += chunk_size
-        
-        self.stop_tts()
         return True
 
     def start_stream(self):
         """Start the audio stream if not already started."""
-        if self.pa is None:
-            self.pa = pyaudio.PyAudio()
-
         if self.stream is None:
             self.stream = self.pa.open(
                 format=pyaudio.paInt16,
@@ -114,12 +109,13 @@ class TTS:
             )
 
     def stop_tts(self):
-        """Stop the audio stream and clean up."""
+        """Stop the audio stream and clean up. Called externally on engine shutdown."""
         if self.stream is not None:
             self.stream.stop_stream()
             self.stream.close()
             self.stream = None
         if self.pa is not None:
+            # Terminate only upon final shutdown by OctyVoiceEngine
             self.pa.terminate()
             self.pa = None
 
@@ -129,9 +125,9 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     from utils.utils import LoadModel
-    
     model = LoadModel()
-    tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
+    tts = TTS(str(model.ensure_model("tts", "es_419-Octybot-medium.onnx")), 
+              str(model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")))
 
     try: 
         print("Text-to-Speech test - Press Ctrl+C to exit\n")
