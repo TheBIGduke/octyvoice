@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
 
-**OctyVoice Engine** is a lightweight Python package for real-time speech-to-text and text-to-speech conversion. It provides a simple offline voice pipeline that captures audio from your microphone, transcribes it using Whisper, and responds using Piper TTS.
+**OctyVoice Engine** is a lightweight, async-first Python package for real-time speech-to-text and text-to-speech conversion. It provides a high-performance offline voice pipeline that captures audio from your microphone, transcribes it using Whisper, and responds using Piper TTS with streaming playback.
 
 ---
 
@@ -20,11 +20,13 @@
 
 ## Features
 
+- **Asynchronous Architecture** – Non-blocking I/O for responsive performance
 - **Real-time Speech-to-Text** – Uses OpenAI Whisper for accurate transcription
-- **Text-to-Speech Synthesis** – Piper TTS for natural-sounding voice output
+- **Streaming Text-to-Speech** – Piper TTS with low-latency streaming playback
 - **Offline Operation** – No cloud dependencies, all processing runs locally
-- **Simple Echo Pipeline** – Press Enter to record, automatic transcription and playback
+- **Simple Voice Pipeline** – Press Enter to record, automatic transcription and playback
 - **Configurable Audio** – Adjust sample rates, volumes, and audio devices
+- **Model Warmup** – Preloads models on startup for faster first-use performance
 - **Lightweight** – Minimal dependencies, focused on core functionality
 
 ---
@@ -32,7 +34,7 @@
 ## Installation
 
 > [!IMPORTANT]
-> Tested on Ubuntu 22.04 with Python 3.10.12. Should work on most Linux distributions.
+> Tested on Ubuntu 22.04 with Python 3.10.12. Should work on most Linux distributions and Windows.
 
 ### Prerequisites
 - Python 3.10 or higher
@@ -168,18 +170,21 @@ python main.py
 1. Press **Enter** to start recording
 2. Speak into your microphone
 3. Press **Enter** again to stop
-4. Listen to the transcription playback
+4. Listen to the transcription playback (streams as it generates)
 
 Press **Ctrl+C** to exit.
 
 ### Test Individual Components
 
 ```bash
-# Test audio capture (3 second recording)
+# Test audio capture (3 second recording, sync + async)
 python -m stt.audio_listener
 
-# Test text-to-speech (interactive prompt)
+# Test text-to-speech (interactive prompt with streaming support)
 python -m tts.text_to_speech
+
+# Test speech-to-text (dummy audio test)
+python -m stt.speech_to_text
 ```
 
 > [!TIP]
@@ -189,102 +194,121 @@ python -m tts.text_to_speech
 
 ## Usage Examples
 
-### Basic Voice Pipeline
+### Basic Async Voice Pipeline
 
 ```python
+import asyncio
 from utils.utils import LoadModel
 from stt.audio_listener import AudioListener
 from stt.speech_to_text import SpeechToText
 from tts.text_to_speech import TTS
 
-# Initialize models
-model = LoadModel()
-audio_listener = AudioListener()
+async def main():
+    # Initialize models
+    model = LoadModel()
+    audio_listener = AudioListener()
 
-stt_model = model.ensure_model("stt", "small.pt")
-stt = SpeechToText(str(stt_model), "small")
+    stt_model = model.ensure_model("stt", "small.pt")
+    stt = SpeechToText(str(stt_model), "small")
 
-tts_model = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
-tts_config = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
-tts = TTS(str(tts_model), str(tts_config))
+    tts_model = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
+    tts_config = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
+    tts = TTS(str(tts_model), str(tts_config))
 
-# Record audio
-audio_listener.start_stream()
-frames = []
-for _ in range(100):
-    data = audio_listener.read_frame(1024)
-    frames.append(data)
-audio_listener.stop_stream()
+    # Record audio asynchronously
+    await audio_listener.start_stream_async()
+    frames = []
+    for _ in range(100):
+        data = await audio_listener.read_frame_async(1024)
+        frames.append(data)
+    await audio_listener.stop_stream_async()
 
-# Transcribe
-audio_bytes = b"".join(frames)
-text = stt.stt_from_bytes(audio_bytes)
-print(f"Transcribed: {text}")
+    # Transcribe
+    audio_bytes = b"".join(frames)
+    text = await stt.stt_from_bytes_async(audio_bytes)
+    print(f"Transcribed: {text}")
 
-# Synthesize and play
-audio_out = tts.synthesize(text)
-tts.play_audio_with_amplitude(audio_out)
+    # Synthesize and play with streaming
+    await tts.synthesize_streaming_async(text)
 
-# Cleanup
-audio_listener.delete()
-tts.stop_tts()
+    # Cleanup
+    await audio_listener.delete_async()
+    tts.stop_tts()
+
+asyncio.run(main())
 ```
 
-### Recording Audio
+### Recording Audio (Async)
 
 ```python
+import asyncio
 from stt.audio_listener import AudioListener
-import time
 
-listener = AudioListener()
-listener.start_stream()
+async def record():
+    listener = AudioListener()
+    await listener.start_stream_async()
 
-# Capture frames
-frames = []
-for _ in range(100):
-    data = listener.read_frame(1000)
-    frames.append(data)
+    # Capture frames
+    frames = []
+    for _ in range(100):
+        data = await listener.read_frame_async(1000)
+        frames.append(data)
 
-listener.stop_stream()
-audio_bytes = b"".join(frames)
+    await listener.stop_stream_async()
+    audio_bytes = b"".join(frames)
 
-# Cleanup
-listener.delete()
+    # Cleanup
+    await listener.delete_async()
+    return audio_bytes
+
+asyncio.run(record())
 ```
 
-### Transcribing Audio
+### Transcribing Audio (Async)
 
 ```python
+import asyncio
 from stt.speech_to_text import SpeechToText
 from utils.utils import LoadModel
 
-model = LoadModel()
-stt_path = model.ensure_model("stt", "small.pt")
-stt = SpeechToText(str(stt_path), "small")
+async def transcribe(audio_bytes):
+    model = LoadModel()
+    stt_path = model.ensure_model("stt", "small.pt")
+    stt = SpeechToText(str(stt_path), "small")
 
-# Transcribe from bytes
-text = stt.stt_from_bytes(audio_bytes)
-print(f"Transcribed: {text}")
+    # Transcribe from bytes
+    text = await stt.stt_from_bytes_async(audio_bytes)
+    print(f"Transcribed: {text}")
+    
+    stt.shutdown()
+    return text
+
+# Usage
+asyncio.run(transcribe(audio_bytes))
 ```
 
-### Synthesizing Speech
+### Synthesizing Speech with Streaming
 
 ```python
+import asyncio
 from tts.text_to_speech import TTS
 from utils.utils import LoadModel
 
-model = LoadModel()
-tts_model = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
-tts_config = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
+async def speak(text):
+    model = LoadModel()
+    tts_model = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
+    tts_config = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
 
-tts = TTS(str(tts_model), str(tts_config))
+    tts = TTS(str(tts_model), str(tts_config))
 
-# Generate and play audio
-audio = tts.synthesize("Hello world")
-tts.play_audio_with_amplitude(audio)
+    # Stream audio (plays while generating for lower latency)
+    success = await tts.synthesize_streaming_async(text)
+    print(f"Streaming playback: {'success' if success else 'failed'}")
 
-# Cleanup
-tts.stop_tts()
+    # Cleanup
+    tts.stop_tts()
+
+asyncio.run(speak("Hello world"))
 ```
 
 ### Using Amplitude Callback
@@ -294,8 +318,46 @@ def on_amplitude(amp):
     """Called for each audio chunk during playback"""
     print(f"Current amplitude: {amp:.2f}")
 
+# With streaming
+tts.synthesize_streaming("Testing amplitude", amplitude_callback=on_amplitude)
+
+# Or with regular playback
 audio = tts.synthesize("Testing amplitude")
 tts.play_audio_with_amplitude(audio, amplitude_callback=on_amplitude)
+```
+
+### Synchronous Usage (Still Supported)
+
+```python
+from stt.audio_listener import AudioListener
+from stt.speech_to_text import SpeechToText
+from tts.text_to_speech import TTS
+from utils.utils import LoadModel
+
+# All components support sync operations
+model = LoadModel()
+listener = AudioListener()
+stt_path = model.ensure_model("stt", "base.pt")
+stt = SpeechToText(str(stt_path), "base")
+
+# Sync recording
+listener.start_stream()
+frames = [listener.read_frame(1024) for _ in range(100)]
+listener.stop_stream()
+
+# Sync transcription
+audio = b"".join(frames)
+text = stt.stt_from_bytes(audio)
+
+# Sync TTS
+tts_model = model.ensure_model("tts", "es_419-Octybot-medium.onnx")
+tts_config = model.ensure_model("tts", "es_419-Octybot-medium.onnx.json")
+tts = TTS(str(tts_model), str(tts_config))
+tts.synthesize_streaming(text)  # Sync streaming
+
+# Cleanup
+listener.delete()
+tts.stop_tts()
 ```
 
 ---
@@ -310,18 +372,18 @@ octyvoice/
 │   └── settings.py         # Runtime configuration
 │
 ├── stt/                    # Speech-to-Text components
-│   ├── audio_listener.py   # Microphone capture (PyAudio wrapper)
-│   └── speech_to_text.py   # Whisper transcription
+│   ├── audio_listener.py   # Async microphone capture (PyAudio wrapper)
+│   └── speech_to_text.py   # Async Whisper transcription
 │
 ├── tts/                    # Text-to-Speech components
-│   └── text_to_speech.py   # Piper synthesis and playback
+│   └── text_to_speech.py   # Streaming Piper synthesis and playback
 │
 ├── utils/
 │   ├── __init__.py
 │   ├── download_models.sh  # Automated model downloader
 │   └── utils.py            # Model loading and validation
 │
-├── main.py                 # Main voice pipeline
+├── main.py                 # Async voice pipeline with streaming
 ├── requirements.txt        # Python dependencies
 ├── installer.sh            # Automated setup script
 ├── .gitignore
@@ -331,35 +393,40 @@ octyvoice/
 ### Component Responsibilities
 
 **main.py** – `OctyVoiceEngine` class
-- Orchestrates the complete voice pipeline
-- Manages threaded audio recording with Enter key control
-- Handles transcription and synthesis flow
-- Resource cleanup on exit (Ctrl+C)
+- Async event loop orchestration
+- Non-blocking audio recording with Enter key control
+- Concurrent model warmup on startup
+- Streaming transcription and synthesis flow
+- Graceful resource cleanup with async shutdown
 
 **stt/audio_listener.py** – `AudioListener` class
-- PyAudio wrapper for microphone input
+- Async PyAudio wrapper for microphone input
 - Auto-detects audio devices (prefers PulseAudio on Linux)
-- Stream lifecycle management (start/stop/delete)
-- Frame-based audio buffering
+- Non-blocking stream lifecycle management
+- ThreadPoolExecutor for blocking I/O operations
+- Both sync and async APIs supported
 
 **stt/speech_to_text.py** – `SpeechToText` class
 - Loads Whisper models from cache
+- Async transcription using ThreadPoolExecutor
 - Converts raw audio bytes (int16) to float32 arrays
-- Transcribes speech with language and vocabulary support
-- Returns transcribed text or None on failure
+- Language and vocabulary support
+- Handles minimum audio length validation
 
 **tts/text_to_speech.py** – `TTS` class
 - Piper TTS voice synthesis
-- Real-time audio playback via PyAudio
+- **Streaming playback** – Audio plays while generating (lower latency)
+- Real-time audio output via PyAudio
 - Configurable volume and speech speed
 - Optional WAV file saving
 - Amplitude callback support for visualizations
+- Both sync and async streaming APIs
 
 **utils/utils.py** – `LoadModel` class
 - Parses `config/models.yml` configuration
 - Resolves model paths in cache directory
 - Validates model existence before use
-- Supports lookup by section and model name
+- Lists available models and validates cache
 
 **utils/download_models.sh**
 - Downloads models from URLs in `models.yml`
@@ -373,7 +440,12 @@ octyvoice/
 
 This project is derived from [**Local-LLM-for-Robots**](https://github.com/JossueE/Local-LLM-for-Robots) by JossueE. The original repository provides a complete robot voice interaction system including wake word detection, LLM integration, and avatar visualization.
 
-**OctyVoice Engine** extracts and simplifies the core STT/TTS pipeline for users who need just voice conversion functionality without robot-specific features.
+**OctyVoice Engine** extracts and modernizes the core STT/TTS pipeline with:
+- Fully async architecture for better performance
+- Streaming TTS for reduced latency
+- Enhanced error handling and logging
+- Improved device detection
+- Simplified API for users who need just voice conversion functionality
 
 For the full system, visit the [original repository](https://github.com/JossueE/Local-LLM-for-Robots).
 
@@ -443,7 +515,7 @@ pulseaudio --start
 
 **Empty transcriptions or "Could not understand the audio"**
 
-- **Record longer audio** – Whisper needs at least 1-2 seconds of speech
+- **Record longer audio** – Whisper needs at least 0.5-1 seconds of speech (automatic warning)
 - **Check microphone volume** – Speak louder or increase system input gain
 - **Verify language setting:**
   ```python
@@ -453,9 +525,14 @@ pulseaudio --start
 - **Try different Whisper model:**
   ```python
   # main.py - Change model size
-  stt_model_path = model.ensure_model("stt", "base.pt")  # Instead of small.pt
-  self.stt = SpeechToText(str(stt_model_path), "base")
+  stt_model_path = model.ensure_model("stt", "small.pt")  # Instead of base.pt
+  self.stt = SpeechToText(str(stt_model_path), "small")
   ```
+
+**Async transcription timeout:**
+- The async implementation uses ThreadPoolExecutor with no timeout
+- If transcription hangs, check if the audio data is valid
+- Long audio files may take time – this is expected behavior
 
 ---
 
@@ -494,6 +571,11 @@ pulseaudio --start
    pa.terminate()
    ```
 
+**Streaming playback stuttering:**
+- Increase buffer size in `start_stream()` (default: 2048 frames)
+- Reduce system load (close other applications)
+- Check CPU usage during playback
+
 ---
 
 ### Performance Issues
@@ -501,18 +583,21 @@ pulseaudio --start
 **High CPU usage or slow transcription**
 
 - Use smaller Whisper model: `base.pt` instead of `small.pt`
-- Reduce buffer size:
-  ```python
-  # config/settings.py
-  AUDIO_LISTENER_FRAMES_PER_BUFFER = 512  # Already optimized
-  ```
-- Close other CPU-intensive applications
+- The async architecture already optimizes CPU usage
+- First transcription after startup may be slower (model loading)
+- Consider warmup phase: models are preloaded in background
 
 **Slow TTS synthesis**
 
-- First synthesis is slow (model loading)
+- First synthesis is slower (model loading + warmup)
 - Subsequent calls are much faster
+- Streaming mode reduces perceived latency
 - This is expected behavior with CPU-based inference
+
+**Async/await issues:**
+- Ensure you're using `asyncio.run()` for top-level async code
+- Don't mix blocking operations in async functions
+- Use `asyncio.to_thread()` or executors for CPU-bound tasks
 
 ---
 
@@ -542,20 +627,29 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+**Windows-specific issues:**
+
+```python
+# Windows requires specific event loop policy (handled automatically in main.py)
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+```
+
 ---
 
 ### Common Runtime Errors
 
 **`KeyboardInterrupt` not working**
 
-- Press Ctrl+C twice
-- Or use Ctrl+Z then `kill %1`
+- Press Ctrl+C twice if needed
+- The async implementation handles cleanup gracefully
+- Wait for "Cleanup complete" message
 
 **"Recording... Press Enter to stop" stuck**
 
 - Press **Enter** (not Space or other keys)
 - Ensure terminal window has focus
-- Try clicking the terminal window first
+- The async recording loop should respond immediately
 
 **Audio files accumulating (if `SAVE_WAV_TTS = True`)**
 
@@ -569,7 +663,23 @@ rm -rf tts/audios/*
 
 **Error: `RuntimeError: Audio stream has not been started`**
 
-- Ensure `start_stream()` is called before `read_frame()`
+- Ensure `start_stream()` or `start_stream_async()` is called first
 - Check that stream didn't fail to start due to device issues
+- Verify device_index is valid
+
+**Async context warnings:**
+
+```python
+# Always use async context properly
+async with AudioListener() as al:
+    await al.start_stream_async()
+    # ... work ...
+    await al.stop_stream_async()
+```
+
+**ThreadPoolExecutor warnings on shutdown:**
+- Normal behavior during cleanup
+- Executors are shut down with `wait=False` for faster exit
+- No action needed if cleanup completes successfully
 
 ---
