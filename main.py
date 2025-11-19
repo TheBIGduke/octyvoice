@@ -27,8 +27,8 @@ class OctyVoiceEngine:
 
         # Speech to Text (Whisper)
         try:
-            stt_model_path = model.ensure_model("stt", "small.pt")
-            self.stt = SpeechToText(str(stt_model_path), "small")
+            stt_model_path = model.ensure_model("stt", "base.pt")
+            self.stt = SpeechToText(str(stt_model_path), "base")
         except Exception as e:
             self.log.error(f"Failed to load STT model: {e}")
             self.audio_listener.delete()

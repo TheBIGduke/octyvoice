@@ -172,10 +172,10 @@ if __name__ == "__main__":
     
     # Load model
     model = LoadModel()
-    stt_path = model.ensure_model("stt", "small.pt")
+    stt_path = model.ensure_model("stt", "base.pt")
     
     print(f"Loading STT model from: {stt_path}")
-    stt = SpeechToText(str(stt_path), "small")
+    stt = SpeechToText(str(stt_path), "base")
     
     print("\nSTT ready. Testing with sample audio...")
     
