@@ -13,7 +13,7 @@ from config.settings import (
 
 
 def define_device_id(pa: pyaudio.PyAudio = None, preferred: int = AUDIO_LISTENER_DEVICE_ID, log: logging.Logger = None) -> int:
-    """Define the device ID to use for audio input"""
+    """Define the device ID to use for audio input."""
     if preferred is not None:
         # Validate the preferred device exists and has input channels
         if pa is not None:
@@ -109,7 +109,7 @@ class AudioListener:
         self.log.info(f"AudioListener initialized (device={self.device_index}, rate={self.sample_rate}Hz, channels={self.channels})")
 
     def start_stream(self):
-        """Start the audio stream if not already started"""
+        """Start the audio stream if not already started."""
         if self.stream is not None:
             self.log.warning("Stream already started")
             return
@@ -129,15 +129,15 @@ class AudioListener:
             self.stream = None
             raise
 
-    async def start_stream(self):
-        """Async version of start_stream"""
+    async def start_stream_async(self):
+        """Async version of start_stream."""
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self.executor, self.start_stream)
 
     def read_frame(self, frame_samples: int) -> bytes:
-        """Read a frame of audio data from the stream"""
+        """Read a frame of audio data from the stream."""
         if self.stream is None:
-            raise RuntimeError("Audio stream has not been started. Call start_stream() first")
+            raise RuntimeError("Audio stream has not been started. Call start_stream() first.")
         
         try:
             return self.stream.read(frame_samples, exception_on_overflow=False)
@@ -145,13 +145,13 @@ class AudioListener:
             self.log.error(f"Error reading audio frame: {e}")
             raise
 
-    async def read_frame(self, frame_samples: int) -> bytes:
-        """Async version of read_frame. Returns audio data from stream"""
+    async def read_frame_async(self, frame_samples: int) -> bytes:
+        """Async version of read_frame. Returns audio data from stream."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self.executor, self.read_frame, frame_samples)
 
     def stop_stream(self):
-        """Stop the audio stream if it is running"""
+        """Stop the audio stream if it is running."""
         if self.stream is not None:
             try:
                 self.stream.stop_stream()
@@ -162,13 +162,13 @@ class AudioListener:
             finally:
                 self.stream = None
 
-    async def stop_stream(self):
-        """Async version of stop_stream"""
+    async def stop_stream_async(self):
+        """Async version of stop_stream."""
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self.executor, self.stop_stream)
 
     def delete(self):
-        """Clean up the audio interface and stream"""
+        """Clean up the audio interface and stream."""
         self.log.debug("Deleting AudioListener")
         
         if self.stream is not None:
@@ -186,17 +186,17 @@ class AudioListener:
             finally:
                 self.audio_interface = None
 
-    async def delete(self):
-        """Async version of delete"""
+    async def delete_async(self):
+        """Async version of delete."""
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self.executor, self.delete)
 
     def __enter__(self):
-        """Context manager entry"""
+        """Context manager entry."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit"""
+        """Context manager exit."""
         self.delete()
         return False
 
@@ -232,21 +232,21 @@ if __name__ == "__main__":
     # Test async version
     print("\nTesting AudioListener (async)...")
     
-    async def test():
+    async def test_async():
         al = AudioListener()
         try:
             test_duration = 3
             print(f"Recording for {test_duration} seconds (async)...")
             
-            await al.start_stream()
+            await al.start_stream_async()
             start_time = time.time()
             
             frames = []
             while time.time() - start_time < test_duration:
-                data = await al.read_frame(1600)
+                data = await al.read_frame_async(1600)
                 frames.append(data)
             
-            await al.stop_stream()
+            await al.stop_stream_async()
             
             total_bytes = sum(len(f) for f in frames)
             print(f"Recorded {total_bytes} bytes in {test_duration} seconds (async).")
@@ -254,6 +254,6 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Async test failed: {e}")
         finally:
-            await al.delete()
+            await al.delete_async()
     
-    asyncio.run(test())
+    asyncio.run(test_async())

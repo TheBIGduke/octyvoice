@@ -60,12 +60,7 @@ class OctyVoiceEngine:
             # Run STT and TTS warmup in parallel
             async def warmup_stt():
                 dummy_audio = np.zeros(16000, dtype=np.int16)
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(
-                    self.executor,
-                    self.stt.stt_from_bytes,
-                    dummy_audio.tobytes()
-                )
+                await self.stt.stt_from_bytes_async(dummy_audio.tobytes())
             
             async def warmup_tts():
                 loop = asyncio.get_event_loop()
@@ -91,6 +86,9 @@ class OctyVoiceEngine:
             # Start recording in background
             recording_task = asyncio.create_task(self._record_loop())
             
+            # Wait a tiny bit for recording to start
+            await asyncio.sleep(0.1)
+            
             # Wait for Enter key (non-blocking)
             await self._wait_for_enter()
             
@@ -107,25 +105,24 @@ class OctyVoiceEngine:
                 except asyncio.TimeoutError:
                     self.log.warning("Recording task timeout")
                     recording_task.cancel()
+                    try:
+                        await recording_task
+                    except asyncio.CancelledError:
+                        pass
         
         return b"".join(self.frames)
 
     async def _record_loop(self):
         """Background task that continuously records audio."""
-        loop = asyncio.get_event_loop()
         self.recording = True
         
         try:
-            # Start stream in executor
-            await loop.run_in_executor(self.executor, self.audio_listener.start_stream)
+            # Start stream
+            await self.audio_listener.start_stream_async()
             
             while self.recording:
-                # Read frame in executor (blocking operation)
-                data = await loop.run_in_executor(
-                    self.executor,
-                    self.audio_listener.read_frame,
-                    AUDIO_LISTENER_FRAMES_PER_BUFFER
-                )
+                # Read frame asynchronously
+                data = await self.audio_listener.read_frame_async(AUDIO_LISTENER_FRAMES_PER_BUFFER)
                 
                 if data:
                     self.frames.append(data)
@@ -137,9 +134,9 @@ class OctyVoiceEngine:
             self.log.error(f"Recording error: {e}")
             raise
         finally:
-            # Stop stream in executor
+            # Stop stream
             try:
-                await loop.run_in_executor(self.executor, self.audio_listener.stop_stream)
+                await self.audio_listener.stop_stream_async()
             except Exception as e:
                 self.log.error(f"Failed to stop stream: {e}")
 
@@ -147,21 +144,11 @@ class OctyVoiceEngine:
         """Wait for Enter key press asynchronously."""
         loop = asyncio.get_event_loop()
         
-        # Run blocking input() in executor
-        await loop.run_in_executor(self.executor, input, "Recording... Press Enter to stop.\n")
-
-    async def transcribe_async(self, audio_bytes: bytes) -> str:
-        """Transcribe audio asynchronously."""
-        loop = asyncio.get_event_loop()
+        # Print message without blocking
+        print("Recording... Press Enter to stop.")
         
-        # Run blocking transcription in executor
-        text = await loop.run_in_executor(
-            self.executor,
-            self.stt.stt_from_bytes,
-            audio_bytes
-        )
-        
-        return text
+        # Run blocking input() in executor to wait for Enter
+        await loop.run_in_executor(self.executor, sys.stdin.readline)
 
     async def synthesize_and_play_streaming(self, text: str):
         """Synthesize and play audio with streaming (play while generating)."""
@@ -170,14 +157,9 @@ class OctyVoiceEngine:
         
         loop = asyncio.get_event_loop()
         
-        # Start synthesis and playback concurrently
-        synthesis_task = asyncio.create_task(
-            loop.run_in_executor(self.executor, self.tts.synthesize_streaming, text)
-        )
-        
+        # Run streaming synthesis in executor
         try:
-            # The streaming synthesis will automatically play audio as it generates
-            await synthesis_task
+            await loop.run_in_executor(self.executor, self.tts.synthesize_streaming, text)
         except Exception as e:
             self.log.error(f"Streaming TTS error: {e}")
 
@@ -216,7 +198,7 @@ class OctyVoiceEngine:
 
                     # Transcribe in background
                     try:
-                        text = await self.transcribe_async(audio_data)
+                        text = await self.stt.stt_from_bytes_async(audio_data)
                     except Exception as e:
                         self.log.error(f"Transcription error: {e}")
                         print("Transcription failed. Please try again.\n")
@@ -249,19 +231,16 @@ class OctyVoiceEngine:
         """Clean up resources asynchronously."""
         self.log.info("Cleaning up resources...")
         
-        loop = asyncio.get_event_loop()
-        
         # Stop recording if active
         self.recording = False
         
         # Cleanup in parallel
-        cleanup_tasks = [
-            loop.run_in_executor(self.executor, self.audio_listener.delete),
-            loop.run_in_executor(self.executor, self.tts.stop_tts)
-        ]
-        
         try:
-            await asyncio.gather(*cleanup_tasks, return_exceptions=True)
+            await asyncio.gather(
+                self.audio_listener.delete_async(),
+                asyncio.to_thread(self.tts.stop_tts),
+                return_exceptions=True
+            )
         except Exception as e:
             self.log.error(f"Error during cleanup: {e}")
         

@@ -124,9 +124,23 @@ class TTS:
             return
         
         try:
-            # Use Piper's streaming synthesis
-            for audio_bytes in self.voice.synthesize_stream_raw(text, syn_config=self.syn_config):
-                yield audio_bytes
+            # Check if Piper has native streaming support
+            if hasattr(self.voice, 'synthesize_stream_raw'):
+                # Use native streaming if available
+                for audio_bytes in self.voice.synthesize_stream_raw(text, syn_config=self.syn_config):
+                    yield audio_bytes
+            else:
+                # Fallback: generate full audio and chunk it
+                self.log.debug("Piper streaming not available, using chunked fallback")
+                audio = self.synthesize(text)
+                if audio is not None:
+                    # Convert float32 to int16
+                    audio_int16 = np.clip(audio * 32767.0, -32767.0, 32767.0).astype(np.int16)
+                    # Yield in chunks
+                    chunk_size = 1024
+                    for i in range(0, len(audio_int16), chunk_size):
+                        chunk = audio_int16[i:i + chunk_size]
+                        yield chunk.tobytes()
                 
         except Exception as e:
             self.log.error(f"Streaming synthesis error: {e}")
@@ -150,27 +164,32 @@ class TTS:
 
         try:
             chunk_buffer = []
-            chunk_size = 1024  # Samples per chunk for playback
+            chunk_size = 512  # Smaller chunks for lower latency
+            samples_buffered = 0
+            min_buffer_size = 256  # Start playing sooner
             
-            # Stream audio chunks from Piper
+            # Stream audio chunks
             for audio_chunk in self.synthesize_stream_raw(text):
                 # Convert bytes to int16 array
                 pcm_i16 = np.frombuffer(audio_chunk, dtype=np.int16)
                 chunk_buffer.append(pcm_i16)
+                samples_buffered += len(pcm_i16)
                 
-                # When we have enough samples, play them
-                while len(chunk_buffer) > 0 and sum(len(c) for c in chunk_buffer) >= chunk_size:
+                # Play when we have enough samples (reduces initial latency)
+                while samples_buffered >= min_buffer_size:
                     # Concatenate buffer
                     audio_data = np.concatenate(chunk_buffer)
                     
                     # Take chunk_size samples
-                    chunk = audio_data[:chunk_size]
-                    remaining = audio_data[chunk_size:]
+                    play_size = min(chunk_size, len(audio_data))
+                    chunk = audio_data[:play_size]
+                    remaining = audio_data[play_size:]
                     
-                    # Clear buffer and add remaining
+                    # Update buffer
                     chunk_buffer = [remaining] if len(remaining) > 0 else []
+                    samples_buffered = len(remaining)
                     
-                    # Play chunk
+                    # Play chunk immediately
                     try:
                         self.stream.write(chunk.tobytes())
                         
@@ -186,7 +205,7 @@ class TTS:
                         return False
             
             # Play remaining audio in buffer
-            if chunk_buffer:
+            if chunk_buffer and samples_buffered > 0:
                 remaining_audio = np.concatenate(chunk_buffer)
                 try:
                     self.stream.write(remaining_audio.tobytes())
@@ -293,7 +312,8 @@ class TTS:
                 format=pyaudio.paInt16,
                 channels=1,
                 rate=self.sample_rate,
-                output=True
+                output=True,
+                frames_per_buffer=2048  # Larger buffer to prevent underruns
             )
             self.log.debug("Audio output stream started")
         except Exception as e:
